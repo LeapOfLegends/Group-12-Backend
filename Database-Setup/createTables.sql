@@ -1,10 +1,8 @@
-
 DROP TABLE IF EXISTS holdings;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS accounts;
 DROP TABLE IF EXISTS instruments;
 DROP TABLE IF EXISTS clients;
-DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS admins;
 --DROP TABLE IF EXISTS transactions;
 
@@ -27,6 +25,8 @@ CREATE TABLE clients (
 	--CONSTRAINT chk_username_no_spaces CHECK (username != '\s'),
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+	ssn VARCHAR(11) NOT NULL,
+	phone_number VARCHAR(12) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -75,6 +75,3 @@ total_cost NUMERIC(14,4) NOT NULL,
 txn_type TEXT NOT NULL CHECK (txn_type IN ('BUY', 'SELL', 'DIVIDEND', 'DEPOSIT', 'WITHDRAWAL'))
 );
 */
-
-
-
