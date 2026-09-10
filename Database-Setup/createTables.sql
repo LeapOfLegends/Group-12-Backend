@@ -44,7 +44,7 @@ CREATE TABLE orders (
     order_id BIGSERIAL PRIMARY KEY,
     client_id BIGINT NOT NULL REFERENCES clients(client_id),
     order_date DATE NOT NULL,
-    order_type VARCHAR(20) NOT NULL,
+    order_type TEXT NOT NULL CHECK(order_type IN ('SELL','BUY')),
     total_cost NUMERIC(14,4) NOT NULL,
     instrument_id BIGINT NOT NULL REFERENCES instruments(instrument_id),
     quantity INTEGER NOT NULL CHECK (quantity > 0),
