@@ -1,10 +1,8 @@
-
 DROP TABLE IF EXISTS holdings;
 DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS accounts;
 DROP TABLE IF EXISTS instruments;
+
 DROP TABLE IF EXISTS clients;
-DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS admins;
 --DROP TABLE IF EXISTS transactions;
 
@@ -27,6 +25,9 @@ CREATE TABLE clients (
 	--CONSTRAINT chk_username_no_spaces CHECK (username != '\s'),
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
+	ssn VARCHAR(11) NOT NULL,
+	phone_number VARCHAR(12) NOT NULL,
+    account_balance NUMERIC(14,4) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -39,17 +40,9 @@ CREATE TABLE admins(
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE accounts (
-    account_id BIGSERIAL PRIMARY KEY,
-    client_id BIGINT NOT NULL REFERENCES clients(client_id),
-    account_balance NUMERIC(14,4) NOT NULL,
-    account_type VARCHAR(100) NOT NULL,
-    opened_date DATE NOT NULL
-);
-
 CREATE TABLE orders (
     order_id BIGSERIAL PRIMARY KEY,
-    account_id BIGINT NOT NULL REFERENCES accounts(account_id),
+    client_id BIGINT NOT NULL REFERENCES clients(client_id),
     order_date DATE NOT NULL,
     order_type VARCHAR(20) NOT NULL,
     total_cost NUMERIC(14,4) NOT NULL,
@@ -61,7 +54,7 @@ CREATE TABLE orders (
 
 CREATE TABLE holdings (
     holding_id BIGSERIAL PRIMARY KEY,
-    account_id BIGINT NOT NULL REFERENCES accounts(account_id),
+    client_id BIGINT NOT NULL REFERENCES clients(client_id),
     instrument_id BIGINT NOT NULL REFERENCES instruments(instrument_id),
     quantity INTEGER NOT NULL,
     average_cost NUMERIC(14,4) NOT NULL,
@@ -75,6 +68,3 @@ total_cost NUMERIC(14,4) NOT NULL,
 txn_type TEXT NOT NULL CHECK (txn_type IN ('BUY', 'SELL', 'DIVIDEND', 'DEPOSIT', 'WITHDRAWAL'))
 );
 */
-
-
-
