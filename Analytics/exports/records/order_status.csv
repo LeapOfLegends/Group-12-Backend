@@ -1,0 +1,5 @@
+status,total_orders
+ACCEPTED,23
+FILLED,12
+REJECTED,11
+FAILED,4
