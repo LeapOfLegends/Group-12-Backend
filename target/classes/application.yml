@@ -1,0 +1,8 @@
+spring:
+    datasource:
+        url: jdbc:postgresql://localhost:5432/group12
+        username: postgres
+        password: n3u3da!
+        
+mybatis:
+    mapper-locations: classpath:mapper/*.xml
