@@ -1,7 +1,6 @@
 DROP TABLE IF EXISTS holdings;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS instruments;
-
 DROP TABLE IF EXISTS clients;
 DROP TABLE IF EXISTS admins;
 --DROP TABLE IF EXISTS transactions;
@@ -43,7 +42,7 @@ CREATE TABLE admins(
 CREATE TABLE orders (
     order_id BIGSERIAL PRIMARY KEY,
     client_id BIGINT NOT NULL REFERENCES clients(client_id),
-    order_date DATE NOT NULL,
+    order_timestamp TIMESTAMP NOT NULL,
     order_type TEXT NOT NULL CHECK(order_type IN ('SELL','BUY')),
     total_cost NUMERIC(14,4) NOT NULL,
     instrument_id BIGINT NOT NULL REFERENCES instruments(instrument_id),
