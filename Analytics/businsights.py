@@ -4,7 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 DB_USER = "postgres"
-DB_PASSWORD = "n3u3d4!"
+DB_PASSWORD = ""
 DB_HOST = "localhost"
 DB_PORT = "15432"
 DB_NAME = "capstone2026"
