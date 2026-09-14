@@ -1,0 +1,86 @@
+classDiagram
+    class Client {
+        -Long clientId
+        -String firstName
+        -String lastName
+        -String email
+        -String passwordHash
+        -String ssn
+        -String phoneNumber
+        -Decimal accountBalance
+        -DateTime createdAt
+        +viewOrders()
+        +viewHoldings()
+        +viewBalance()
+    }
+
+    class Admin {
+        -Long adminId
+        -String firstName
+        -String lastName
+        -String email
+        -String passwordHash
+        -DateTime createdAt
+        +viewClients()
+        +viewOrders()
+        +viewTradeHistory()
+    }
+
+    class Instrument {
+        -Long instrumentId
+        -String symbol
+        -String instrumentName
+        -String assetClass
+        -String currency
+        -Boolean isTradable
+        -Decimal price
+        +getCurrentPrice() Decimal
+        +isAvailableForTrading() Boolean
+    }
+
+    class Order {
+        -Long orderId
+        -Date orderDate
+        -OrderType orderType
+        -Integer quantity
+        -Decimal price
+        -Decimal totalCost
+        -OrderStatus status
+        +accept()
+        +reject()
+        +fill()
+        +fail()
+    }
+
+    class Holding {
+        -Long holdingId
+        -Integer quantity
+        -Decimal averageCost
+        -DateTime updatedAt
+        +increaseQuantity(Integer quantity, Decimal price)
+        +decreaseQuantity(Integer quantity)
+        +updateAverageCost(Decimal price)
+        +hasSufficientQuantity(Integer quantity) Boolean
+    }
+
+    class OrderType {
+        <<enumeration>>
+        BUY
+        SELL
+    }
+
+    class OrderStatus {
+        <<enumeration>>
+        ACCEPTED
+        FILLED
+        REJECTED
+        FAILED
+    }
+
+    Client "1" --> "0..*" Order : places
+    Client "1" --> "0..*" Holding : owns
+    Instrument "1" --> "0..*" Order : referenced by
+    Instrument "1" --> "0..*" Holding : held as
+
+    Order --> OrderType
+    Order --> OrderStatus
