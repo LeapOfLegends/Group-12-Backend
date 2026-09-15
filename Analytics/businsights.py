@@ -2,16 +2,22 @@ from sqlalchemy import create_engine
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from dotenv import load_dotenv
 
-DB_USER = "postgres"
-DB_PASSWORD = ""
-DB_HOST = "localhost"
-DB_PORT = "15432"
-DB_NAME = "capstone2026"
+load_dotenv()
+
+import os
+
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
 
 engine = create_engine(f"postgresql+psycopg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
 
-# TEST QUERY
+# FUNCTIONS TO QUERY DATABASE AND EXPORT RESULTS AS CSV
+
 #query total count of clients in the client table over each year
 def get_client_counts(engine):
     client_counts_df = pd.read_sql(""" 
@@ -67,7 +73,7 @@ def get_top_instruments_by_price(engine):
         print(f"✗ Error saving top_instruments_by_price.csv: {e}")
     return top_instruments_df
 
-#get order status metrics
+#get order status metrics (i.e. Accepted, Rejected, etc.)
 def get_order_status(engine):
     order_status_df = pd.read_sql("""
                         SELECT status, COUNT(*) AS total_orders
@@ -83,8 +89,7 @@ def get_order_status(engine):
         print(f"✗ Error saving order_status.csv: {e}")
     return order_status_df
 
-#shows trades that were made from each year based on order date
-#only show quantity where status was accepted
+#shows trades that were made from each year based on order date; only shows accepted trades
 def get_trade_volume(engine):
     trade_volume_df = pd.read_sql("""
                         SELECT EXTRACT(YEAR FROM order_timestamp) AS year, COUNT(*) AS total_trades, SUM(quantity) AS shares_traded, SUM(price * quantity) AS total_value
@@ -103,49 +108,57 @@ def get_trade_volume(engine):
     return trade_volume_df
 
 
-get_trade_volume(engine)
-get_order_status(engine)
-get_top_instruments_by_price(engine)
-get_most_traded_instruments(engine)
-get_client_counts(engine)
+# *USED TO RUN QUERIES AND EXPORT RESULTS IN RECORDS FOLDER AS CSV*
+#print(get_trade_volume(engine))
+#get_order_status(engine)
+#get_top_instruments_by_price(engine)
+#get_most_traded_instruments(engine)
+#get_client_counts(engine)
 
 
-#visualizations
+# *VISUALIZATIONS*
 
-#line graph of client counts by year
-#client_by_year = get_client_counts(engine)
+"""
+# *LINE GRAPH OF CLIENT COUNTS BY YEAR*
+client_by_year = get_client_counts(engine)
 
-#fig, ax = plt.subplots()
-#sns.lineplot(data=client_by_year, x="year", y="total_new_clients", ax=ax)
-#ax.set_title("Client Counts by Year")
+fig, ax = plt.subplots()
+sns.lineplot(data=client_by_year, x="year", y="total_new_clients", ax=ax)
+ax.set_title("Client Counts by Year")
 
 
 #export lineplot (client_by_year) as pdf in exports folder
-#fig.savefig("Analytics/exports/visualizations/client_counts_by_year.pdf")
+fig.savefig("Analytics/exports/visualizations/client_counts_by_year.pdf")
+plt.show()
+"""
 
-#bar graph of most traded instruments
-#most_traded_instruments = get_most_traded_instruments(engine)
+"""
+# *BAR PLOT OF MOST TRADED INSTRUMENTS*
+most_traded_instruments = get_most_traded_instruments(engine)
 
-#fig, ax = plt.subplots()
-#colors = sns.color_palette("pastel")
-#sns.barplot(data=most_traded_instruments, x="symbol", y="traded_orders", palette=colors, ax=ax)
-#ax.set_ylim(0, 5)
-#ax.set_title("Most Traded Instruments")
+fig, ax = plt.subplots()
+colors = sns.color_palette("pastel")
+sns.barplot(data=most_traded_instruments, x="symbol", y="traded_orders", palette=colors, ax=ax)
+ax.set_ylim(0, 5)
+ax.set_title("Most Traded Instruments")
 
 
-#export barplot (most_traded_instruments) as pdf in exports folder
-#fig.savefig("Analytics/exports/visualizations/most_traded_instruments.pdf")
+##export barplot (most_traded_instruments) as pdf in exports folder
+fig.savefig("Analytics/exports/visualizations/most_traded_instruments.pdf")
+plt.show()
+"""
 
-#donut chart of order status
-#order_status = get_order_status(engine)
-#colors = sns.color_palette("pastel")
-#plt.pie(order_status['total_orders'], labels=order_status['status'], autopct='%1.1f%%', startangle=90, wedgeprops=dict(width=0.5), colors=colors)
-#plt.title("Order Status Distribution")
+
+# *DONUT CHART OF ORDER STATUS*
+"""
+order_status = get_order_status(engine)
+colors = sns.color_palette("pastel")
+plt.pie(order_status['total_orders'], labels=order_status['status'], autopct='%1.1f%%', startangle=90, wedgeprops=dict(width=0.5), colors=colors)
+plt.title("Order Status Distribution")
 
 #export donut chart (order_status) as pdf in exports folder
-#fig = plt.gcf()
-#fig.savefig("Analytics/exports/visualizations/order_status_distribution.pdf")
-#plt.show()
+fig = plt.gcf()
+fig.savefig("Analytics/exports/visualizations/order_status_distribution.pdf")
+plt.show()
+"""
 
-# with engine.connect() as conn:
-#     print("bsdghsdfjsdfgjdksg")
