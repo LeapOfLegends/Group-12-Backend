@@ -100,8 +100,10 @@ classDiagram
         CRYPTO
     }
 
-    Client "1" -- "0..*" Order : places
-    Client "1" -- "0..*" Holding : owns
-    Client "1" -- "0..*" Session : has
-    Instrument "1" -- "0..*" Order : referenced by
-    Instrument "1" -- "0..*" Holding : held as
+Order "0..*" --> "1" Client : placed by
+Order "0..*" --> "1" Instrument : trades
+
+Holding "0..*" --> "1" Client : owned by
+Holding "0..*" --> "1" Instrument : position in
+
+Session "0..*" --> "1" Client : belongs to
