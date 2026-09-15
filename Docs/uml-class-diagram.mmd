@@ -1,19 +1,4 @@
 classDiagram
-    class Client {
-        -Long clientId
-        -String firstName
-        -String lastName
-        -String email
-        -String passwordHash
-        -String ssn
-        -String phoneNumber
-        -Decimal accountBalance
-        -DateTime createdAt
-        +viewOrders()
-        +viewHoldings()
-        +viewBalance()
-    }
-
     class Admin {
         -Long adminId
         -String firstName
@@ -26,41 +11,73 @@ classDiagram
         +viewTradeHistory()
     }
 
-    class Instrument {
-        -Long instrumentId
-        -String symbol
-        -String instrumentName
-        -String assetClass
-        -String currency
-        -Boolean isTradable
-        -Decimal price
-        +getCurrentPrice() Decimal
-        +isAvailableForTrading() Boolean
+    class Client {
+        -Long clientId
+        -String firstName
+        -String lastName
+        -String email
+        -String passwordHash
+        -Decimal accountBalance
+        -DateTime createdAt
+        +viewOrders()
+        +viewHoldings()
+        +viewBalance()
+        +hasSufficientBalance(Decimal amount) Boolean
+        +increaseBalance(Decimal amount) void
+        +decreaseBalance(Decimal amount) void
     }
 
     class Order {
         -Long orderId
-        -Date orderDate
         -OrderType orderType
-        -Integer quantity
-        -Decimal price
-        -Decimal totalCost
+        -Decimal quantity
         -OrderStatus status
-        +accept()
-        +reject()
-        +fill()
-        +fail()
+        -Decimal executionPrice
+        -Decimal totalValue
+        -DateTime submittedAt
+        -DateTime? acceptedAt
+        -DateTime? completedAt
+        -String? rejectionReason
+        +accept() void
+        +fill(Decimal executionPrice) void
+        +reject(String reason) void
+        +calculateTotalValue() Decimal
+    }
+
+    class Instrument {
+        -Long instrumentId
+        -String symbol
+        -String instrumentName
+        -AssetClass assetClass
+        -String market
+        -String currency
+        -Decimal price
+        -Boolean isTradable
+        +updatePrice(Decimal newPrice) void
+        +markTradable() void
+        +markUntradable() void
     }
 
     class Holding {
         -Long holdingId
-        -Integer quantity
+        -Decimal quantity
         -Decimal averageCost
         -DateTime updatedAt
-        +increaseQuantity(Integer quantity, Decimal price)
-        +decreaseQuantity(Integer quantity)
-        +updateAverageCost(Decimal price)
-        +hasSufficientQuantity(Integer quantity) Boolean
+        +hasSufficientQuantity(Decimal quantity) Boolean
+        +increaseQuantity(Decimal quantity, Decimal purchasePrice) void
+        +decreaseQuantity(Decimal quantity) void
+        +updateAverageCost(Decimal price) void
+    }
+
+    class Session {
+        -Long sessionId
+        -DateTime createdAt
+        -DateTime expiresAt
+        -DateTime revokedAt
+        +isExpired() Boolean
+        +isRevoked() Boolean
+        +isValid() Boolean
+        +revoke() void
     }
 
     class OrderType {
@@ -71,16 +88,20 @@ classDiagram
 
     class OrderStatus {
         <<enumeration>>
+        SUBMITTED
         ACCEPTED
         FILLED
         REJECTED
-        FAILED
     }
 
-    Client "1" --> "0..*" Order : places
-    Client "1" --> "0..*" Holding : owns
-    Instrument "1" --> "0..*" Order : referenced by
-    Instrument "1" --> "0..*" Holding : held as
+    class AssetClass {
+        <<enumeration>>
+        EQUITY
+        CRYPTO
+    }
 
-    Order --> OrderType
-    Order --> OrderStatus
+    Client "1" -- "0..*" Order : places
+    Client "1" -- "0..*" Holding : owns
+    Client "1" -- "0..*" Session : has
+    Instrument "1" -- "0..*" Order : referenced by
+    Instrument "1" -- "0..*" Holding : held as
