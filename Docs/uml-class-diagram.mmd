@@ -1,0 +1,109 @@
+classDiagram
+    class Admin {
+        -Long adminId
+        -String firstName
+        -String lastName
+        -String email
+        -String passwordHash
+        -DateTime createdAt
+        +viewClients()
+        +viewOrders()
+        +viewTradeHistory()
+    }
+
+    class Client {
+        -Long clientId
+        -String firstName
+        -String lastName
+        -String email
+        -String passwordHash
+        -Decimal accountBalance
+        -DateTime createdAt
+        +viewOrders()
+        +viewHoldings()
+        +viewBalance()
+        +hasSufficientBalance(Decimal amount) Boolean
+        +increaseBalance(Decimal amount) void
+        +decreaseBalance(Decimal amount) void
+    }
+
+    class Order {
+        -Long orderId
+        -OrderType orderType
+        -Decimal quantity
+        -OrderStatus status
+        -Decimal executionPrice
+        -Decimal totalValue
+        -DateTime submittedAt
+        -DateTime? acceptedAt
+        -DateTime? completedAt
+        -String? rejectionReason
+        +accept() void
+        +fill(Decimal executionPrice) void
+        +reject(String reason) void
+        +calculateTotalValue() Decimal
+    }
+
+    class Instrument {
+        -Long instrumentId
+        -String symbol
+        -String instrumentName
+        -AssetClass assetClass
+        -String market
+        -String currency
+        -Decimal price
+        -Boolean isTradable
+        +updatePrice(Decimal newPrice) void
+        +markTradable() void
+        +markUntradable() void
+    }
+
+    class Holding {
+        -Long holdingId
+        -Decimal quantity
+        -Decimal averageCost
+        -DateTime updatedAt
+        +hasSufficientQuantity(Decimal quantity) Boolean
+        +increaseQuantity(Decimal quantity, Decimal purchasePrice) void
+        +decreaseQuantity(Decimal quantity) void
+        +updateAverageCost(Decimal price) void
+    }
+
+    class Session {
+        -Long sessionId
+        -DateTime createdAt
+        -DateTime expiresAt
+        -DateTime revokedAt
+        +isExpired() Boolean
+        +isRevoked() Boolean
+        +isValid() Boolean
+        +revoke() void
+    }
+
+    class OrderType {
+        <<enumeration>>
+        BUY
+        SELL
+    }
+
+    class OrderStatus {
+        <<enumeration>>
+        SUBMITTED
+        ACCEPTED
+        FILLED
+        REJECTED
+    }
+
+    class AssetClass {
+        <<enumeration>>
+        EQUITY
+        CRYPTO
+    }
+
+Order "0..*" --> "1" Client : placed by
+Order "0..*" --> "1" Instrument : trades
+
+Holding "0..*" --> "1" Client : owned by
+Holding "0..*" --> "1" Instrument : position in
+
+Session "0..*" --> "1" Client : belongs to
