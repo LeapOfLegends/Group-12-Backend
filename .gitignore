@@ -25,3 +25,9 @@ replay_pid*
 
 #environment files
 *.env
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
