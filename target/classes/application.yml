@@ -1,11 +1,20 @@
 spring:
     datasource:
-        url: jdbc:postgresql://localhost:5432/group12
+        url: jdbc:postgresql://localhost:15432/capstone2026
         username: postgres
-        password: 
-        
+        password:
+        driver-class-name: org.postgresql.Driver
+
 mybatis:
     mapper-locations: classpath:mapper/*.xml
+    type-aliases-package: group12.Model
+    configuration:
+        map-underscore-to-camel-case: true
 
 server:
     port: 8081
+
+logging:
+    level:
+        org.mybatis: DEBUG
+        org.springframework.jdbc: DEBUG
