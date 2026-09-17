@@ -2,7 +2,7 @@ spring:
     datasource:
         url: jdbc:postgresql://localhost:15432/capstone2026
         username: postgres
-        password: n3u3d4!
+        password:
         driver-class-name: org.postgresql.Driver
 
 mybatis:
