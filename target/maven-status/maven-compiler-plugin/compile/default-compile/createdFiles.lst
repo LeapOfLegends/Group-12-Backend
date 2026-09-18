@@ -1,7 +1,0 @@
-group12\health\DatabasePingController.class
-group12\Repository\AdminRepository.class
-group12\Services\AdminService.class
-group12\Entities\AdminEntity.class
-group12\HelloController.class
-group12\config\MyBatisConfig.class
-group12\Application.class
