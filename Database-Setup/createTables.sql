@@ -42,13 +42,19 @@ CREATE TABLE admins(
 CREATE TABLE orders (
     order_id BIGSERIAL PRIMARY KEY,
     client_id BIGINT NOT NULL REFERENCES clients(client_id),
-    order_timestamp TIMESTAMP NOT NULL,
-    order_type TEXT NOT NULL CHECK(order_type IN ('SELL','BUY')),
-    total_cost NUMERIC(14,4) NOT NULL,
     instrument_id BIGINT NOT NULL REFERENCES instruments(instrument_id),
+    order_type TEXT NOT NULL CHECK(order_type IN ('SELL','BUY')),
     quantity INTEGER NOT NULL CHECK (quantity > 0),
-	status TEXT NOT NULL CHECK (status IN ('ACCEPTED', 'REJECTED', 'FAILED', 'PENDING')),
-	price NUMERIC(14,4) NOT NULL CHECK (price > 0)
+	status TEXT NOT NULL DEFAULT 'SUBMITTED' CHECK (status IN ('SUBMITTED', 'ACCEPTED', 'REJECTED', 'FAILED', 'FILLED')),
+    submitted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    accepted_at TIMESTAMPTZ,
+    rejected_at TIMESTAMPTZ,
+    failed_at TIMESTAMPTZ,
+    filled_at TIMESTAMPTZ,
+	execution_price NUMERIC(14,4) CHECK (execution_price > 0),
+    trade_value NUMERIC(18,4) GENERATED ALWAYS AS (execution_price * quantity) STORED,
+    rejection_reason TEXT,
+    failure_reason TEXT
 );
 
 CREATE TABLE holdings (
