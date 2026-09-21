@@ -11,7 +11,7 @@ import java.util.List;
 @RestController 
 @RequestMapping("api/holdings")
 @RequiredArgsConstructor 
-public class HoldingContoller {
+public class HoldingController {
 
     private final HoldingService holdingService;
 
