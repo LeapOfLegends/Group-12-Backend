@@ -1238,5 +1238,13 @@ INSERT INTO holdings (holding_id, client_id, instrument_id, quantity, average_co
 INSERT INTO holdings (holding_id, client_id, instrument_id, quantity, average_cost) VALUES (49, 49, 49, 0, 72.6000);
 INSERT INTO holdings (holding_id, client_id, instrument_id, quantity, average_cost) VALUES (50, 50, 50, 0, 72.6000);
 
+-- Explicit IDs above do not automatically advance BIGSERIAL sequences.
+-- Keep the next application-generated IDs from colliding with seeded rows.
+SELECT setval(pg_get_serial_sequence('instruments', 'instrument_id'), MAX(instrument_id)) FROM instruments;
+SELECT setval(pg_get_serial_sequence('clients', 'client_id'), MAX(client_id)) FROM clients;
+SELECT setval(pg_get_serial_sequence('admins', 'admin_id'), MAX(admin_id)) FROM admins;
+SELECT setval(pg_get_serial_sequence('orders', 'order_id'), MAX(order_id)) FROM orders;
+SELECT setval(pg_get_serial_sequence('holdings', 'holding_id'), MAX(holding_id)) FROM holdings;
+
 
 
