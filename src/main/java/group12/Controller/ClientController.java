@@ -14,26 +14,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import group12.Entities.ClientEntity;
-import group12.Repository.ClientRepository;
+import group12.Services.ClientService;
 
 @RestController
 @RequestMapping("/clients")
 public class ClientController {
 
-    private final ClientRepository clientRepository;
+    private final ClientService clientService;
 
-    public ClientController(ClientRepository clientRepository) {
-        this.clientRepository = clientRepository;
+    public ClientController(ClientService clientService) {
+        this.clientService = clientService;
     }
 
     @GetMapping
     public List<ClientEntity> getAllClients() {
-        return clientRepository.findAll();
+        return clientService.getAllClients();
     }
 
     @GetMapping("/{clientId}")
     public ResponseEntity<ClientEntity> getClientById(@PathVariable Long clientId) {
-        ClientEntity client = clientRepository.findById(clientId);
+        ClientEntity client = clientService.getClientById(clientId);
         if (client == null) {
             return ResponseEntity.notFound().build();
         }
@@ -42,7 +42,7 @@ public class ClientController {
 
     @GetMapping("/email/{email}")
     public ResponseEntity<ClientEntity> getClientByEmail(@PathVariable String email) {
-        ClientEntity client = clientRepository.findByEmail(email);
+        ClientEntity client = clientService.getClientByEmail(email);
         if (client == null) {
             return ResponseEntity.notFound().build();
         }
@@ -51,8 +51,8 @@ public class ClientController {
 
     @PostMapping
     public ResponseEntity<ClientEntity> createClient(@RequestBody ClientEntity client) {
-        int rowsInserted = clientRepository.save(client);
-        if (rowsInserted == 0) {
+        boolean created = clientService.createClient(client);
+        if (!created) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(client);
@@ -60,14 +60,13 @@ public class ClientController {
 
     @PutMapping("/{clientId}")
     public ResponseEntity<ClientEntity> updateClient(@PathVariable Long clientId, @RequestBody ClientEntity client) {
-        ClientEntity existingClient = clientRepository.findById(clientId);
+        ClientEntity existingClient = clientService.getClientById(clientId);
         if (existingClient == null) {
             return ResponseEntity.notFound().build();
         }
 
-        client.setClientId(clientId);
-        int rowsUpdated = clientRepository.update(client);
-        if (rowsUpdated == 0) {
+        boolean updated = clientService.updateClient(clientId, client);
+        if (!updated) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         return ResponseEntity.ok(client);
@@ -75,12 +74,12 @@ public class ClientController {
 
     @DeleteMapping("/{clientId}")
     public ResponseEntity<Void> deleteClient(@PathVariable Long clientId) {
-        ClientEntity existingClient = clientRepository.findById(clientId);
+        ClientEntity existingClient = clientService.getClientById(clientId);
         if (existingClient == null) {
             return ResponseEntity.notFound().build();
         }
 
-        clientRepository.deleteById(clientId);
+        clientService.deleteClient(clientId);
         return ResponseEntity.noContent().build();
     }
 }
