@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import group12.Entities.ClientEntity;
 import group12.Services.ClientService;
+import group12.dto.ClientDTO;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/clients")
@@ -50,7 +52,8 @@ public class ClientController {
     }
 
     @PostMapping
-    public ResponseEntity<ClientEntity> createClient(@RequestBody ClientEntity client) {
+    public ResponseEntity<ClientEntity> createClient(@Valid @RequestBody ClientDTO clientDTO) {
+        ClientEntity client = clientService.toEntity(clientDTO);
         boolean created = clientService.createClient(client);
         if (!created) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -59,12 +62,13 @@ public class ClientController {
     }
 
     @PutMapping("/{clientId}")
-    public ResponseEntity<ClientEntity> updateClient(@PathVariable Long clientId, @RequestBody ClientEntity client) {
+    public ResponseEntity<ClientEntity> updateClient(@PathVariable Long clientId, @Valid @RequestBody ClientDTO clientDTO) {
         ClientEntity existingClient = clientService.getClientById(clientId);
         if (existingClient == null) {
             return ResponseEntity.notFound().build();
         }
 
+        ClientEntity client = clientService.toEntity(clientDTO);
         boolean updated = clientService.updateClient(clientId, client);
         if (!updated) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();

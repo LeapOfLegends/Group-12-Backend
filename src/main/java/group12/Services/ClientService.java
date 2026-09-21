@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import group12.Entities.ClientEntity;
 import group12.Repository.ClientRepository;
+import group12.dto.ClientDTO;
 
 @Service
 public class ClientService {
@@ -26,6 +27,18 @@ public class ClientService {
 
     public ClientEntity getClientByEmail(String email) {
         return clientRepository.findByEmail(email);
+    }
+
+    public ClientEntity toEntity(ClientDTO clientDTO) {
+        ClientEntity client = new ClientEntity();
+        client.setFirstName(clientDTO.getFirstName());
+        client.setLastName(clientDTO.getLastName());
+        client.setEmail(clientDTO.getEmail());
+        client.setPasswordHash(clientDTO.getPasswordHash());
+        client.setSsn(clientDTO.getSsn());
+        client.setPhoneNumber(clientDTO.getPhoneNumber());
+        client.setAccountBalance(clientDTO.getAccountBalance());
+        return client;
     }
 
     public boolean createClient(ClientEntity client) {
