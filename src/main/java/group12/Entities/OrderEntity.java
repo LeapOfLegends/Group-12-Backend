@@ -1,6 +1,5 @@
 package group12.Entities;
 
-
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
