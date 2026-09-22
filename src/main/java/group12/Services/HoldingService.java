@@ -2,6 +2,8 @@ package group12.Services;
 
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import group12.exception.HoldingNotFoundException;
+import group12.exception.ClientNotFoundException;
 import org.springframework.http.HttpStatus;
 
 import group12.Entities.HoldingEntity;
@@ -20,31 +22,20 @@ public class HoldingService {
 
     public HoldingEntity getHoldingByHoldingId(Long holdingId) {
         return holdingRepository.getHoldingByHoldingId(holdingId)
-            .orElseThrow(() ->
-                new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    String.format("Holding id: %s not found", holdingId)
-                )
-        );
+                .orElseThrow(() -> new HoldingNotFoundException("Holding not found"));
     }
 
     public List<HoldingEntity> getHoldingsByClientId(Long clientId) {
         
         //check if client exists
         if(clientRepository.findById(clientId) == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    String.format("Client id: %s not found", clientId)
-            );
+            throw new ClientNotFoundException("Client not found");
         }
 
         List<HoldingEntity> holdings = holdingRepository.getHoldingsByClientId(clientId);
 
         if(holdings.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    String.format("No holdings found for client id: %s", clientId)
-            );
+            throw new HoldingNotFoundException("No holdings found for this client");
         }
         
         return holdings;
@@ -54,10 +45,7 @@ public class HoldingService {
         List<HoldingEntity> holdings = holdingRepository.getHoldingsByInstrumentId(instrumentsId);
 
         if(holdings.isEmpty()) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    String.format("No holdings found for instrument id: %s", instrumentsId)
-            );
+            throw new HoldingNotFoundException("No holdings found for this instrument");
         }
         // Check ID exists not implemented yet
         //

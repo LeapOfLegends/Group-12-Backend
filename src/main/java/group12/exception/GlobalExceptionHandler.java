@@ -47,6 +47,14 @@ public class GlobalExceptionHandler {
         return errorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(HoldingNotFoundException.class)
+    public ResponseEntity<ApiError> handleHoldingNotFound(
+            HoldingNotFoundException exception,
+            HttpServletRequest request
+    ) {
+        return errorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+    }
+
     @ExceptionHandler(OrderNotFoundException.class)
     public ResponseEntity<ApiError> handleOrderNotFound(
             OrderNotFoundException exception,
