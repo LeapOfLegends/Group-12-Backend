@@ -17,7 +17,7 @@
 
     <groupId>com.group12</groupId>
     <artifactId>group-12-backend</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.0</version>
 
     <properties>
         <java.version>25</java.version>
