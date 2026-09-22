@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-25-amazon-corretto'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -14,19 +19,28 @@ pipeline {
                 sh 'echo "Hello from Jenkins"'
                 sh 'pwd'
                 sh 'ls -la'
+                sh 'java -version'
+                sh 'mvn -version'
             }
         }
 
         stage('Build') {
             steps {
-                echo 'No backend source yet; this is a smoke-test build.'
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'No tests configured yet; build succeeds.'
+                sh 'mvn test'
             }
+        }
+    }
+
+    post {
+        always {
+            junit testResults: '**/target/surefire-reports/*.xml',
+                  allowEmptyResults: true
         }
     }
 }
