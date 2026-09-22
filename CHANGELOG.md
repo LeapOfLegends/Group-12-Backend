@@ -10,19 +10,24 @@ Changes are collected here during normal development. When the team prepares a r
 
 ### Added
 
-- Established the Java 17 and Spring Boot Maven project under the `com.group12:group-12-backend` coordinates.
-- Added an initial REST endpoint and endpoint test as the foundation for backend API development.
-- Added PostgreSQL schema and seed scripts for instruments, clients, administrators, orders, and holdings.
-- Added Python business analytics for client counts, traded instruments, instrument prices, order statuses, and yearly trade volume.
-- Added CSV data exports and PDF visualizations for business analytics results.
-- Added a Jenkins smoke-test pipeline with checkout, sanity-check, build, and test stages.
-- Added the Mermaid UML class diagram for the trading domain.
-- Added the manual semantic versioning and release workflow documentation.
 
 ### Changed
 
-- Consolidated client identity and cash balance data in the database schema.
-- Updated repository ignore rules for local environment and IDE files.
+
+## [0.1.0] - 2026-09-22
+
+### Added
+
+- Client REST API endpoints for creating, updating, and retrieving clients (by id and email), plus a client-specific orders endpoint.
+- ClientService business logic and ClientDTO integration to validate and transform client data for persistence.
+- ClientRepository persistence methods and database seed entries for clients.
+- Unit tests covering client endpoint validation and basic client workflows.
+
+### Changed
+
+- Consolidated client and account data models (client/account join) and updated seed scripts accordingly.
+- Exposed client counts to analytics and added environment configuration support for client components.
+
 
 ## Release Entry Template
 
