@@ -24,6 +24,21 @@ Changes are collected here during normal development. When the team prepares a r
 - Consolidated client identity and cash balance data in the database schema.
 - Updated repository ignore rules for local environment and IDE files.
 
+## [0.1.0] - 2026-09-22
+
+### Added
+
+- Client REST API endpoints for creating, updating, and retrieving clients (by id and email), plus a client-specific orders endpoint.
+- ClientService business logic and ClientDTO integration to validate and transform client data for persistence.
+- ClientRepository persistence methods and database seed entries for clients.
+- Unit tests covering client endpoint validation and basic client workflows.
+
+### Changed
+
+- Consolidated client and account data models (client/account join) and updated seed scripts accordingly.
+- Exposed client counts to analytics and added environment configuration support for client components.
+
+
 ## Release Entry Template
 
 Copy this section when preparing an official release. Replace the placeholders, remove unused headings, and move applicable entries from `Unreleased` into the new release section.
