@@ -3,6 +3,7 @@ package group12.Controller;
 import group12.dto.CreateOrderRequest;
 import group12.Entities.OrderEntity;
 import group12.Services.OrderService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,8 +34,7 @@ public class OrderController {
             @PathVariable Long clientId
     ) {
 
-        List<OrderEntity> orders =
-                orderService.getOrdersByClientId(clientId);
+        List<OrderEntity> orders = orderService.getOrdersByClientId(clientId);
 
         return ResponseEntity.ok(orders);
     }
@@ -42,13 +42,12 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<OrderEntity> submitOrder(
-            @RequestBody CreateOrderRequest request
+           @Valid @RequestBody CreateOrderRequest request
     ) {
 
         OrderEntity order = orderService.submitOrder(request);
 
-        URI location =
-                URI.create("/api/orders/" + order.getOrderId());
+        URI location = URI.create("/api/orders/" + order.getOrderId());
 
         return ResponseEntity
                 .created(location)

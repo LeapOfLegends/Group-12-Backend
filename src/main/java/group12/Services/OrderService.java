@@ -3,10 +3,11 @@ package group12.Services;
 import group12.dto.CreateOrderRequest;
 import group12.Entities.OrderEntity;
 import group12.Repository.OrderRepository;
+import group12.exception.OrderNotFoundException;
+import group12.exception.OrderSubmissionException;
+import group12.exception.ClientNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -18,12 +19,7 @@ public class OrderService {
 
     public OrderEntity getOrderById(Long orderId) {
         return orderRepository.findById(orderId)
-                .orElseThrow(() ->
-                        new ResponseStatusException(
-                                HttpStatus.NOT_FOUND,
-                                "Order not found"
-                        )
-                );
+                .orElseThrow(() -> new OrderNotFoundException("Order not found"));
     }
 
     public List<OrderEntity> getOrdersByClientId(Long clientId) {
@@ -32,10 +28,7 @@ public class OrderService {
 
     public OrderEntity submitOrder(CreateOrderRequest request) {
 
-        validateSubmission(request);
-
         OrderEntity order = new OrderEntity();
-
         order.setClientId(request.clientId());
         order.setInstrumentId(request.instrumentId());
         order.setOrderType(request.orderType());
@@ -44,30 +37,10 @@ public class OrderService {
         int rowsInserted = orderRepository.insert(order);
 
         if (rowsInserted != 1) {
-            throw new IllegalStateException("Order could not be created");
+            throw new OrderSubmissionException("Order could not be created");
         }
 
         return getOrderById(order.getOrderId());
     }
 
-    private void validateSubmission(CreateOrderRequest request) {
-
-        if (request.clientId() == null) {
-            throw new IllegalArgumentException("Client ID is required");
-        }
-
-        if (request.instrumentId() == null) {
-            throw new IllegalArgumentException("Instrument ID is required");
-        }
-
-        if (request.orderType() == null) {
-            throw new IllegalArgumentException("Order type is required");
-        }
-
-        if (request.quantity() == null || request.quantity() <= 0) {
-            throw new IllegalArgumentException(
-                    "Quantity must be greater than zero"
-            );
-        }
-    }
 }
