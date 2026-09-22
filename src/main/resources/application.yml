@@ -17,3 +17,8 @@ logging:
     level:
         org.mybatis: DEBUG
         org.springframework.jdbc: DEBUG
+
+alpaca:
+    api-key: ${ALPACA_API_KEY:}
+    secret-key: ${ALPACA_SECRET_KEY:}
+    trade-url: ${ALPACA_TRADE_URL:https://paper-api.alpaca.markets}
