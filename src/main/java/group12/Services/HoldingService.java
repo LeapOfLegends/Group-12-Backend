@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 
 import group12.Entities.HoldingEntity;
 import group12.Repository.HoldingRepository;
+import group12.Repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
 import java.util.List;
 
@@ -15,34 +16,37 @@ import java.util.List;
 public class HoldingService {
 
     private final HoldingRepository holdingRepository;
+    private final ClientRepository clientRepository;
 
     public HoldingEntity getHoldingByHoldingId(Long holdingId) {
         return holdingRepository.getHoldingByHoldingId(holdingId)
-                .orElseThrow(() ->
-                    new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        String.format("Holding id: \"%s\" not found", holdingId)
-                    )
-            );
+            .orElseThrow(() ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    String.format("Holding id: %s not found", holdingId)
+                )
+        );
     }
 
     public List<HoldingEntity> getHoldingsByClientId(Long clientId) {
+        
+        //check if client exists
+        if(clientRepository.findById(clientId) == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    String.format("Client id: %s not found", clientId)
+            );
+        }
+
         List<HoldingEntity> holdings = holdingRepository.getHoldingsByClientId(clientId);
 
         if(holdings.isEmpty()) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
-                    String.format("No holdings found for client id: \"%s\"", clientId)
+                    String.format("No holdings found for client id: %s", clientId)
             );
         }
-        // Check clientID exists not implemented yet
-        //
-        // if(!clientRepository.exists(clientId)) {
-        //     throw new ResponseStatusException(
-        //             HttpStatus.NOT_FOUND,
-        //             String.format("Client id: \"%s\" not found", clientId)
-        //     );
-        // }
+        
         return holdings;
     }
 
@@ -52,7 +56,7 @@ public class HoldingService {
         if(holdings.isEmpty()) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
-                    String.format("No holdings found for instrument id: \"%s\"", instrumentsId)
+                    String.format("No holdings found for instrument id: %s", instrumentsId)
             );
         }
         // Check ID exists not implemented yet
@@ -66,10 +70,5 @@ public class HoldingService {
         return holdings;
     }
 
-    public boolean holdingExists(Long holdingId) {
-        return holdingRepository
-                .getHoldingByHoldingId(holdingId)
-                .isPresent();
-    }
-    
+
 }
