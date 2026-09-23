@@ -71,6 +71,14 @@ public class GlobalExceptionHandler {
         return errorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(ClientSubmissionException.class)
+    public ResponseEntity<ApiError> handleClientSubmission(
+            ClientSubmissionException exception,
+            HttpServletRequest request
+    ) {
+        return errorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadableMessage(
             HttpMessageNotReadableException exception,

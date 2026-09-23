@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import group12.Entities.ClientEntity;
 import group12.Repository.ClientRepository;
 import group12.dto.ClientDTO;
+import group12.exception.ClientNotFoundException;
+import group12.exception.ClientSubmissionException;
 
 @Service
 public class ClientService {
@@ -22,11 +24,19 @@ public class ClientService {
     }
 
     public ClientEntity getClientById(Long clientId) {
-        return clientRepository.findById(clientId);
+        ClientEntity client = clientRepository.findById(clientId);
+        if (client == null) {
+            throw new ClientNotFoundException("Client not found with id: " + clientId);
+        }
+        return client;
     }
 
     public ClientEntity getClientByEmail(String email) {
-        return clientRepository.findByEmail(email);
+        ClientEntity client = clientRepository.findByEmail(email);
+        if (client == null) {
+            throw new ClientNotFoundException("Client not found with email: " + email);
+        }
+        return client;
     }
 
     public ClientEntity toEntity(ClientDTO clientDTO) {
@@ -42,13 +52,17 @@ public class ClientService {
     }
 
     public boolean createClient(ClientEntity client) {
-        return clientRepository.save(client) > 0;
+        int result = clientRepository.save(client);
+        if (result <= 0) {
+            throw new ClientSubmissionException("Failed to create client");
+        }
+        return true;
     }
 
     public boolean updateClient(Long clientId, ClientEntity client) {
         ClientEntity existingClient = clientRepository.findById(clientId);
         if (existingClient == null) {
-            return false;
+            throw new ClientNotFoundException("Client not found with id: " + clientId);
         }
 
         client.setClientId(clientId);
@@ -58,7 +72,7 @@ public class ClientService {
     public boolean deleteClient(Long clientId) {
         ClientEntity existingClient = clientRepository.findById(clientId);
         if (existingClient == null) {
-            return false;
+            throw new ClientNotFoundException("Client not found with id: " + clientId);
         }
 
         return clientRepository.deleteById(clientId) > 0;

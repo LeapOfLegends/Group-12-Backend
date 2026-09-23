@@ -74,14 +74,13 @@ class ClientControllerTest {
     }
 
     @Test
-    void getClientById_shouldReturn404_whenClientDoesNotExist() {
-        when(clientService.getClientById(99L)).thenReturn(null);
+    void getClientById_shouldThrowClientNotFound_whenClientDoesNotExist() {
+        when(clientService.getClientById(99L)).thenThrow(new group12.exception.ClientNotFoundException("Client not found"));
 
-        ResponseEntity<ClientEntity> response = clientController.getClientById(99L);
-
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        org.junit.jupiter.api.Assertions.assertThrows(group12.exception.ClientNotFoundException.class, () -> {
+            clientController.getClientById(99L);
+        });
     }
-
     @Test
     void updateClient_shouldReturn200_whenClientExists() {
         ClientDTO request = new ClientDTO();
