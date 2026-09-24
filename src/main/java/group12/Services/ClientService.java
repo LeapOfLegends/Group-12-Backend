@@ -52,6 +52,21 @@ public class ClientService {
     }
 
     public boolean createClient(ClientEntity client) {
+        // check uniqueness for email and SSN using counts to avoid selectOne errors
+        java.util.List<String> errors = new java.util.ArrayList<>();
+
+        if (clientRepository.countByEmail(client.getEmail()) > 0) {
+            errors.add("email: Email already in use");
+        }
+
+        if (clientRepository.countBySsn(client.getSsn()) > 0) {
+            errors.add("ssn: SSN already in use");
+        }
+
+        if (!errors.isEmpty()) {
+            throw new group12.exception.DuplicateResourceException(errors, client);
+        }
+
         int result = clientRepository.save(client);
         if (result <= 0) {
             throw new ClientSubmissionException("Failed to create client");

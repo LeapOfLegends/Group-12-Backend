@@ -79,6 +79,17 @@ public class GlobalExceptionHandler {
         return errorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ApiError> handleDuplicateResource(
+            DuplicateResourceException exception,
+            HttpServletRequest request
+    ) {
+        String message = exception.getMessages().stream()
+                .collect(Collectors.joining("; "));
+
+        return errorResponse(HttpStatus.CONFLICT, message, request);
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiError> handleUnreadableMessage(
             HttpMessageNotReadableException exception,

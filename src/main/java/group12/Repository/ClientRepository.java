@@ -20,6 +20,15 @@ public interface ClientRepository {
     @Select("SELECT client_id, first_name, last_name, email, password_hash, ssn, phone_number, account_balance, created_at FROM clients WHERE email = #{email}")
     ClientEntity findByEmail(String email);
 
+    @Select("SELECT client_id, first_name, last_name, email, password_hash, ssn, phone_number, account_balance, created_at FROM clients WHERE ssn = #{ssn}")
+    ClientEntity findBySsn(String ssn);
+
+    @Select("SELECT COUNT(*) FROM clients WHERE ssn = #{ssn}")
+    int countBySsn(String ssn);
+
+    @Select("SELECT COUNT(*) FROM clients WHERE email = #{email}")
+    int countByEmail(String email);
+
     @Select("SELECT client_id, first_name, last_name, email, password_hash, ssn, phone_number, account_balance, created_at FROM clients ORDER BY client_id")
     List<ClientEntity> findAll();
 
