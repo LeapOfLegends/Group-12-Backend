@@ -1,8 +1,6 @@
 package group12.Controller;
 
 import org.springframework.web.bind.annotation.*;
-
-import group12.Entities.ClientEntity;
 import group12.Entities.HoldingEntity;
 import group12.Services.HoldingService;
 import org.springframework.http.ResponseEntity;

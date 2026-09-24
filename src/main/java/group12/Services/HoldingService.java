@@ -1,11 +1,8 @@
 package group12.Services;
 
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 import group12.exception.HoldingNotFoundException;
 import group12.exception.ClientNotFoundException;
-import org.springframework.http.HttpStatus;
-
 import group12.Entities.HoldingEntity;
 import group12.Repository.HoldingRepository;
 import group12.Repository.ClientRepository;
