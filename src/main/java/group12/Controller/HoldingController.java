@@ -9,7 +9,6 @@ import java.util.List;
 
 
 @RestController 
-//@RequestMapping("api/holdings")
 @RequestMapping("api/client/{clientId}/holdings")
 @RequiredArgsConstructor 
 public class HoldingController {
