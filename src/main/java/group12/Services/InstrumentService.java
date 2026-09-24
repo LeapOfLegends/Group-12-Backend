@@ -61,7 +61,6 @@ public class InstrumentService {
     private InstrumentDTO toDto(InstrumentEntity instrument) {
 
         return new InstrumentDTO(
-                instrument.getInstrumentId(),
                 instrument.getSymbol(),
                 instrument.getInstrumentName(),
                 instrument.getAssetClass(),
