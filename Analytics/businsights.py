@@ -118,19 +118,20 @@ def get_trade_volume(engine):
 
 # *VISUALIZATIONS*
 
-"""
+
 # *LINE GRAPH OF CLIENT COUNTS BY YEAR*
 client_by_year = get_client_counts(engine)
 
 fig, ax = plt.subplots()
 sns.lineplot(data=client_by_year, x="year", y="total_new_clients", ax=ax)
 ax.set_title("Client Counts by Year")
-
+ax.set_ylabel("new clients")
+ax.set_xticks(range(2016, 2027))
 
 #export lineplot (client_by_year) as pdf in exports folder
 fig.savefig("Analytics/exports/visualizations/client_counts_by_year.pdf")
 plt.show()
-"""
+
 
 """
 # *BAR PLOT OF MOST TRADED INSTRUMENTS*
