@@ -19,7 +19,7 @@ import group12.dto.ClientDTO;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/clients")
+@RequestMapping("/api/clients")
 public class ClientController {
 
     private final ClientService clientService;
@@ -36,38 +36,24 @@ public class ClientController {
     @GetMapping("/{clientId}")
     public ResponseEntity<ClientEntity> getClientById(@PathVariable Long clientId) {
         ClientEntity client = clientService.getClientById(clientId);
-        if (client == null) {
-            return ResponseEntity.notFound().build();
-        }
         return ResponseEntity.ok(client);
     }
 
     @GetMapping("/email/{email}")
     public ResponseEntity<ClientEntity> getClientByEmail(@PathVariable String email) {
         ClientEntity client = clientService.getClientByEmail(email);
-        if (client == null) {
-            return ResponseEntity.notFound().build();
-        }
         return ResponseEntity.ok(client);
     }
 
     @PostMapping
     public ResponseEntity<ClientEntity> createClient(@Valid @RequestBody ClientDTO clientDTO) {
         ClientEntity client = clientService.toEntity(clientDTO);
-        boolean created = clientService.createClient(client);
-        if (!created) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        }
+        clientService.createClient(client); // will throw ClientSubmissionException on failure
         return ResponseEntity.status(HttpStatus.CREATED).body(client);
     }
 
     @PutMapping("/{clientId}")
     public ResponseEntity<ClientEntity> updateClient(@PathVariable Long clientId, @Valid @RequestBody ClientDTO clientDTO) {
-        ClientEntity existingClient = clientService.getClientById(clientId);
-        if (existingClient == null) {
-            return ResponseEntity.notFound().build();
-        }
-
         ClientEntity client = clientService.toEntity(clientDTO);
         boolean updated = clientService.updateClient(clientId, client);
         if (!updated) {
@@ -78,12 +64,10 @@ public class ClientController {
 
     @DeleteMapping("/{clientId}")
     public ResponseEntity<Void> deleteClient(@PathVariable Long clientId) {
-        ClientEntity existingClient = clientService.getClientById(clientId);
-        if (existingClient == null) {
-            return ResponseEntity.notFound().build();
+        boolean deleted = clientService.deleteClient(clientId);
+        if (!deleted) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
-
-        clientService.deleteClient(clientId);
         return ResponseEntity.noContent().build();
     }
 }

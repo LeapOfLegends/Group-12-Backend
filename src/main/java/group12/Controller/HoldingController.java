@@ -9,35 +9,35 @@ import java.util.List;
 
 
 @RestController 
-@RequestMapping("api/holdings")
+@RequestMapping("api/client/{clientId}/holdings")
 @RequiredArgsConstructor 
 public class HoldingController {
 
     private final HoldingService holdingService;
 
+    @GetMapping
+    public List<HoldingEntity> getHoldingsByClientId(
+        @PathVariable Long clientId
+    ) {
+        return holdingService.getHoldingsByClientId(clientId);
+    }
+
     @GetMapping("/{holdingId}")
     public ResponseEntity<HoldingEntity> getHolding(
-        @PathVariable("holdingId") Long holdingId
+        @PathVariable Long holdingId,
+        @PathVariable Long clientId
     ) {
-        HoldingEntity holding = holdingService.getHoldingByHoldingId(holdingId);
+        HoldingEntity holding = holdingService.getHoldingByHoldingIdAndClientId(holdingId, clientId);
 
         return ResponseEntity.ok(holding);
     }
 
-    @GetMapping("/client/{clientId}")
-    public ResponseEntity<List<HoldingEntity>> getClientHoldings(
-        @PathVariable("clientId") Long clientId
-    ) {
-        List<HoldingEntity> holdings = holdingService.getHoldingsByClientId(clientId);
-
-        return ResponseEntity.ok(holdings);
-    }
-
     @GetMapping("/instrument/{instrumentId}")
     public ResponseEntity<List<HoldingEntity>> getInstrumentHoldings(
-        @PathVariable("instrumentId") Long instrumentId
+        @PathVariable Long instrumentId,
+        @PathVariable Long clientId
     ) {
-        List<HoldingEntity> holdings = holdingService.getHoldingsByInstrumentId(instrumentId);
+        List<HoldingEntity> holdings = holdingService.getHoldingsByInstrumentIdAndClientId(instrumentId, clientId);
 
         return ResponseEntity.ok(holdings);
     }
