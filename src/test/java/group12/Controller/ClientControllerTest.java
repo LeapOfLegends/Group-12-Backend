@@ -74,14 +74,13 @@ class ClientControllerTest {
     }
 
     @Test
-    void getClientById_shouldReturn404_whenClientDoesNotExist() {
-        when(clientService.getClientById(99L)).thenReturn(null);
+    void getClientById_shouldThrowClientNotFound_whenClientDoesNotExist() {
+        when(clientService.getClientById(99L)).thenThrow(new group12.exception.ClientNotFoundException("Client not found"));
 
-        ResponseEntity<ClientEntity> response = clientController.getClientById(99L);
-
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        org.junit.jupiter.api.Assertions.assertThrows(group12.exception.ClientNotFoundException.class, () -> {
+            clientController.getClientById(99L);
+        });
     }
-
     @Test
     void updateClient_shouldReturn200_whenClientExists() {
         ClientDTO request = new ClientDTO();
@@ -111,6 +110,43 @@ class ClientControllerTest {
     }
 
     @Test
+    void getClientByEmail_shouldReturn200_whenClientExists() {
+        ClientEntity entity = new ClientEntity();
+        entity.setClientId(7L);
+        entity.setEmail("ava@example.com");
+
+        when(clientService.getClientByEmail("ava@example.com")).thenReturn(entity);
+
+        ResponseEntity<ClientEntity> response = clientController.getClientByEmail("ava@example.com");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("ava@example.com", response.getBody().getEmail());
+    }
+
+    @Test
+    void updateClient_shouldReturn400_whenClientCannotBeUpdated() {
+        ClientDTO request = new ClientDTO();
+        request.setFirstName("Ava");
+        request.setLastName("Martinez");
+        request.setEmail("ava@example.com");
+        request.setPasswordHash("hash");
+        request.setSsn("123-45-6789");
+        request.setPhoneNumber("555-123-4567");
+        request.setAccountBalance(new BigDecimal("10.00"));
+
+        ClientEntity entity = new ClientEntity();
+        entity.setClientId(1L);
+        entity.setFirstName("Ava");
+
+        when(clientService.toEntity(any(ClientDTO.class))).thenReturn(entity);
+        when(clientService.updateClient(1L, entity)).thenReturn(false);
+
+        ResponseEntity<ClientEntity> response = clientController.updateClient(1L, request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
     void deleteClient_shouldReturn204_whenClientExists() {
         ClientEntity existing = new ClientEntity();
         existing.setClientId(1L);
@@ -122,5 +158,14 @@ class ClientControllerTest {
         ResponseEntity<Void> response = clientController.deleteClient(1L);
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    @Test
+    void deleteClient_shouldReturn400_whenClientCannotBeDeleted() {
+        when(clientService.deleteClient(3L)).thenReturn(false);
+
+        ResponseEntity<Void> response = clientController.deleteClient(3L);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 }
