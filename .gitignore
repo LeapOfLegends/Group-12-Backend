@@ -22,9 +22,31 @@ replay_pid*
 
 #environment files
 *.env
+.env
+.env.*
+
+# Build output
+/target/
+**/target/
+
 
 # IDE
 .idea/
+.vscode/
+.classpath
+.project
+.settings/
 *.iml
 *.iws
 *.ipr
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local Spring config
+application-local.yml
+application-local.properties
+
+# Logs
+*.log
