@@ -8,6 +8,7 @@ import group12.Repository.HoldingRepository;
 import group12.Repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
 import java.util.List;
+import java.util.Optional;
 
 
 @Service
@@ -23,8 +24,12 @@ public class HoldingService {
             throw new ClientNotFoundException("Client not found");
         }
 
-        return holdingRepository.getHoldingByHoldingIdAndClientId(holdingId, clientId)
-                .orElseThrow(() -> new HoldingNotFoundException("Holding not found"));
+        HoldingEntity holding = holdingRepository.getHoldingByHoldingIdAndClientId(holdingId, clientId);
+
+        if(holding == null){
+            throw new HoldingNotFoundException("Holding not found");
+        }
+        return holding;
     }
 
     public List<HoldingEntity> getHoldingsByClientId(Long clientId) {
@@ -43,9 +48,9 @@ public class HoldingService {
         return holdings;
     }
 
-    public List<HoldingEntity> getHoldingsByInstrumentIdAndClientId(Long instrumentId,  Long clientId) {
+    public Optional<HoldingEntity> getHoldingByInstrumentIdAndClientId(Long instrumentId,  Long clientId) {
 
-        List<HoldingEntity> holdings = holdingRepository.getHoldingsByInstrumentIdAndClientId(instrumentId, clientId);
+        Optional<HoldingEntity> holdings = holdingRepository.getHoldingByInstrumentIdAndClientId(instrumentId, clientId);
 
         //check if client exists
         if(clientRepository.findById(clientId) == null) {
