@@ -13,8 +13,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-
-import group12.Controller.HoldingController;
 import group12.Entities.HoldingEntity;
 import group12.Services.HoldingService;
 
@@ -32,16 +30,16 @@ public class HoldingControllerTest {
     @Test
     void getHolding_shouldReturn200AndHolding_whenHoldingExists() {
         HoldingEntity holding = holding(10L, 1L, 25L, 5);
-        when(holdingService.getHoldingByHoldingId(10L)).thenReturn(holding);
+        when(holdingService.getHoldingByHoldingIdAndClientId(10L, 1L)).thenReturn(holding);
 
-        ResponseEntity<HoldingEntity> response = holdingController.getHolding(10L);
+        ResponseEntity<HoldingEntity> response = holdingController.getHolding(10L, 1L);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(10L, response.getBody().getHoldingId());
         assertEquals(25L, response.getBody().getInstrumentId());
         assertEquals(5, response.getBody().getQuantity());
-        verify(holdingService).getHoldingByHoldingId(10L);
+        verify(holdingService).getHoldingByHoldingIdAndClientId(10L, 1L);
     }
 
     @Test
@@ -52,23 +50,22 @@ public class HoldingControllerTest {
         );
         when(holdingService.getHoldingsByClientId(1L)).thenReturn(holdings);
 
-        ResponseEntity<List<HoldingEntity>> response = holdingController.getClientHoldings(1L);
+        List<HoldingEntity> response = holdingController.getHoldingsByClientId(1L);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(holdings, response.getBody());
+        assertEquals(holdings, response);
         verify(holdingService).getHoldingsByClientId(1L);
     }
 
     @Test
     void getInstrumentHoldings_shouldReturn200AndHoldings() {
         List<HoldingEntity> holdings = List.of(holding(10L, 1L, 25L, 5));
-        when(holdingService.getHoldingsByInstrumentId(25L)).thenReturn(holdings);
+        when(holdingService.getHoldingsByInstrumentIdAndClientId(25L, 1L)).thenReturn(holdings);
 
-        ResponseEntity<List<HoldingEntity>> response = holdingController.getInstrumentHoldings(25L);
+        ResponseEntity<List<HoldingEntity>> response = holdingController.getInstrumentHoldings(25L, 1L);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(holdings, response.getBody());
-        verify(holdingService).getHoldingsByInstrumentId(25L);
+        verify(holdingService).getHoldingsByInstrumentIdAndClientId(25L, 1L);
     }
 
     private HoldingEntity holding(Long holdingId, Long clientId, Long instrumentId, Integer quantity) {

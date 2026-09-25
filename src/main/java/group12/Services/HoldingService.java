@@ -1,11 +1,8 @@
 package group12.Services;
 
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 import group12.exception.HoldingNotFoundException;
 import group12.exception.ClientNotFoundException;
-import org.springframework.http.HttpStatus;
-
 import group12.Entities.HoldingEntity;
 import group12.Repository.HoldingRepository;
 import group12.Repository.ClientRepository;
@@ -20,8 +17,13 @@ public class HoldingService {
     private final HoldingRepository holdingRepository;
     private final ClientRepository clientRepository;
 
-    public HoldingEntity getHoldingByHoldingId(Long holdingId) {
-        return holdingRepository.getHoldingByHoldingId(holdingId)
+    public HoldingEntity getHoldingByHoldingIdAndClientId(Long holdingId, Long clientId) {
+
+        if(clientRepository.findById(clientId) == null) {
+            throw new ClientNotFoundException("Client not found");
+        }
+
+        return holdingRepository.getHoldingByHoldingIdAndClientId(holdingId, clientId)
                 .orElseThrow(() -> new HoldingNotFoundException("Holding not found"));
     }
 
@@ -41,11 +43,17 @@ public class HoldingService {
         return holdings;
     }
 
-    public List<HoldingEntity> getHoldingsByInstrumentId(Long instrumentsId) {
-        List<HoldingEntity> holdings = holdingRepository.getHoldingsByInstrumentId(instrumentsId);
+    public List<HoldingEntity> getHoldingsByInstrumentIdAndClientId(Long instrumentId,  Long clientId) {
+
+        List<HoldingEntity> holdings = holdingRepository.getHoldingsByInstrumentIdAndClientId(instrumentId, clientId);
+
+        //check if client exists
+        if(clientRepository.findById(clientId) == null) {
+            throw new ClientNotFoundException("Client not found");
+        }
 
         if(holdings.isEmpty()) {
-            throw new HoldingNotFoundException("No holdings found for this instrument");
+            throw new HoldingNotFoundException("Client does not hold this instrument");
         }
         // Check ID exists not implemented yet
         //

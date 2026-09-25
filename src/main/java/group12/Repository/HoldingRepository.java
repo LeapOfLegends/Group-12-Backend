@@ -18,9 +18,9 @@ public interface HoldingRepository {
             average_cost,
             updated_at
         FROM holdings 
-        WHERE holding_id = #{holdingId}
+        WHERE holding_id = #{holdingId} AND client_id = #{client_id}
         """)
-    Optional<HoldingEntity> getHoldingByHoldingId(@Param("holdingId") Long holding_id);
+    Optional<HoldingEntity> getHoldingByHoldingIdAndClientId(@Param("holdingId") Long holding_id, @Param("clientId") Long client_id);
 
     @Select ("""
             SELECT 
@@ -45,9 +45,9 @@ public interface HoldingRepository {
                 average_cost,
                 updated_at
             FROM holdings
-            WHERE instrument_id = #{instrumentId}
+            WHERE instrument_id = #{instrumentId} AND client_id = #{clientId}
             """)
-    List<HoldingEntity> getHoldingsByInstrumentId(@Param("instrumentId") Long instrument_id);
+    List<HoldingEntity> getHoldingsByInstrumentIdAndClientId(@Param("instrumentId") Long instrument_id, @Param("clientId") Long client_id);
 
 
     @Insert("""
