@@ -3,9 +3,9 @@ package group12.Repository;
 import group12.Entities.OrderEntity;
 import group12.Entities.OrderStatus;
 import group12.Entities.OrderType;
+import group12.Services.OrderFailureService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +14,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -54,6 +57,12 @@ class OrderRepositoryIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private OrderFailureService orderFailureService;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     private Long firstClientId;
     private Long secondClientId;
@@ -105,6 +114,23 @@ class OrderRepositoryIntegrationTest {
         assertEquals(new BigDecimal("493.8000"), order.getTradeValue());
         assertNotNull(order.getAcceptedAt());
         assertNotNull(order.getFilledAt());
+    }
+
+    @Test
+    @Transactional
+    void findByIdForUpdate_whenOrderExists_mapsOrder() {
+        Long orderId = insertOrderWithStatus(OrderStatus.SUBMITTED, 3);
+
+        Optional<OrderEntity> result = orderRepository.findByIdForUpdate(orderId);
+
+        assertTrue(result.isPresent());
+        OrderEntity order = result.orElseThrow();
+        assertEquals(orderId, order.getOrderId());
+        assertEquals(firstClientId, order.getClientId());
+        assertEquals(instrumentId, order.getInstrumentId());
+        assertEquals(OrderType.BUY, order.getOrderType());
+        assertEquals(3, order.getQuantity());
+        assertEquals(OrderStatus.SUBMITTED, order.getStatus());
     }
 
     @Test
@@ -202,6 +228,170 @@ class OrderRepositoryIntegrationTest {
         );
     }
 
+    @Test
+    void acceptSubmittedOrder_whenSubmitted_transitionsToAccepted() {
+        Long orderId = insertOrderWithStatus(OrderStatus.SUBMITTED, 2);
+
+        int rowsAffected = orderRepository.acceptSubmittedOrder(orderId);
+
+        OrderEntity order = orderRepository.findById(orderId).orElseThrow();
+        assertEquals(1, rowsAffected);
+        assertEquals(OrderStatus.ACCEPTED, order.getStatus());
+        assertNotNull(order.getAcceptedAt());
+    }
+
+    @Test
+    void acceptSubmittedOrder_whenAlreadyAccepted_returnsZero() {
+        Long orderId = insertOrderWithStatus(OrderStatus.SUBMITTED, 2);
+        assertEquals(1, orderRepository.acceptSubmittedOrder(orderId));
+
+        int rowsAffected = orderRepository.acceptSubmittedOrder(orderId);
+
+        assertEquals(0, rowsAffected);
+        assertEquals(
+                OrderStatus.ACCEPTED,
+                orderRepository.findById(orderId).orElseThrow().getStatus()
+        );
+    }
+
+    @Test
+    void rejectSubmittedOrder_whenSubmitted_persistsReasonAndTimestamp() {
+        Long orderId = insertOrderWithStatus(OrderStatus.SUBMITTED, 2);
+
+        int rowsAffected = orderRepository.rejectSubmittedOrder(
+                orderId,
+                "INSUFFICIENT_FUNDS"
+        );
+
+        OrderEntity order = orderRepository.findById(orderId).orElseThrow();
+        assertEquals(1, rowsAffected);
+        assertEquals(OrderStatus.REJECTED, order.getStatus());
+        assertNotNull(order.getRejectedAt());
+        assertEquals("INSUFFICIENT_FUNDS", order.getRejectionReason());
+    }
+
+    @Test
+    void fillAcceptedOrder_whenAccepted_persistsPriceTimestampAndGeneratedTradeValue() {
+        Long orderId = insertOrderWithStatus(OrderStatus.ACCEPTED, 4);
+
+        int rowsAffected = orderRepository.fillAcceptedOrder(
+                orderId,
+                new BigDecimal("12.3456")
+        );
+
+        OrderEntity order = orderRepository.findById(orderId).orElseThrow();
+        assertEquals(1, rowsAffected);
+        assertEquals(OrderStatus.FILLED, order.getStatus());
+        assertEquals(new BigDecimal("12.3456"), order.getExecutionPrice());
+        assertEquals(new BigDecimal("49.3824"), order.getTradeValue());
+        assertNotNull(order.getFilledAt());
+    }
+
+    @Test
+    void fillAcceptedOrder_whenSubmitted_returnsZero() {
+        Long orderId = insertOrderWithStatus(OrderStatus.SUBMITTED, 2);
+
+        int rowsAffected = orderRepository.fillAcceptedOrder(
+                orderId,
+                new BigDecimal("10.0000")
+        );
+
+        assertEquals(0, rowsAffected);
+        assertEquals(
+                OrderStatus.SUBMITTED,
+                orderRepository.findById(orderId).orElseThrow().getStatus()
+        );
+    }
+
+    @Test
+    void failAcceptedOrder_whenAccepted_persistsReasonAndTimestamp() {
+        Long orderId = insertOrderWithStatus(OrderStatus.ACCEPTED, 2);
+
+        int rowsAffected = orderRepository.failAcceptedOrder(orderId, "EXECUTION_ERROR");
+
+        OrderEntity order = orderRepository.findById(orderId).orElseThrow();
+        assertEquals(1, rowsAffected);
+        assertEquals(OrderStatus.FAILED, order.getStatus());
+        assertNotNull(order.getFailedAt());
+        assertEquals("EXECUTION_ERROR", order.getFailureReason());
+    }
+
+    @Test
+    void failAcceptedOrder_whenSubmitted_returnsZero() {
+        Long orderId = insertOrderWithStatus(OrderStatus.SUBMITTED, 2);
+
+        int rowsAffected = orderRepository.failAcceptedOrder(orderId, "EXECUTION_ERROR");
+
+        assertEquals(0, rowsAffected);
+        assertEquals(
+                OrderStatus.SUBMITTED,
+                orderRepository.findById(orderId).orElseThrow().getStatus()
+        );
+    }
+
+    @Test
+    void rejectedOrder_isTerminal() {
+        Long orderId = insertOrderWithStatus(OrderStatus.REJECTED, 2);
+
+        assertNoLifecycleTransitionSucceeds(orderId);
+        assertEquals(
+                OrderStatus.REJECTED,
+                orderRepository.findById(orderId).orElseThrow().getStatus()
+        );
+    }
+
+    @Test
+    void filledOrder_isTerminal() {
+        Long orderId = insertOrderWithStatus(OrderStatus.FILLED, 2);
+
+        assertNoLifecycleTransitionSucceeds(orderId);
+        assertEquals(
+                OrderStatus.FILLED,
+                orderRepository.findById(orderId).orElseThrow().getStatus()
+        );
+    }
+
+    @Test
+    void failedOrder_isTerminal() {
+        Long orderId = insertOrderWithStatus(OrderStatus.FAILED, 2);
+
+        assertNoLifecycleTransitionSucceeds(orderId);
+        assertEquals(
+                OrderStatus.FAILED,
+                orderRepository.findById(orderId).orElseThrow().getStatus()
+        );
+    }
+
+    @Test
+    void markFailed_requiresNewCommitSurvivesOuterTransactionRollback() {
+        Long orderId = insertOrderWithStatus(OrderStatus.ACCEPTED, 2);
+        BigDecimal originalBalance = jdbcTemplate.queryForObject(
+                "SELECT account_balance FROM clients WHERE client_id = ?",
+                BigDecimal.class,
+                firstClientId
+        );
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
+        transactionTemplate.executeWithoutResult(status -> {
+            jdbcTemplate.update(
+                    "UPDATE clients SET account_balance = 500.0000 WHERE client_id = ?",
+                    firstClientId
+            );
+            orderFailureService.markFailed(orderId, "EXECUTION_ERROR");
+            status.setRollbackOnly();
+        });
+
+        BigDecimal persistedBalance = jdbcTemplate.queryForObject(
+                "SELECT account_balance FROM clients WHERE client_id = ?",
+                BigDecimal.class,
+                firstClientId
+        );
+        OrderEntity order = orderRepository.findById(orderId).orElseThrow();
+        assertEquals(originalBalance, persistedBalance);
+        assertEquals(OrderStatus.FAILED, order.getStatus());
+        assertEquals("EXECUTION_ERROR", order.getFailureReason());
+    }
+
     private Long insertClient(String email) {
         return jdbcTemplate.queryForObject("""
                 INSERT INTO clients (
@@ -231,6 +421,26 @@ class OrderRepositoryIntegrationTest {
                 VALUES (?, ?, 'BUY', 1, ?::timestamptz)
                 RETURNING order_id
                 """, Long.class, clientId, instrumentId, submittedAt);
+    }
+
+    private Long insertOrderWithStatus(OrderStatus status, int quantity) {
+        return jdbcTemplate.queryForObject("""
+                INSERT INTO orders (
+                    client_id, instrument_id, order_type, quantity, status
+                )
+                VALUES (?, ?, 'BUY', ?, ?)
+                RETURNING order_id
+                """, Long.class, firstClientId, instrumentId, quantity, status.name());
+    }
+
+    private void assertNoLifecycleTransitionSucceeds(Long orderId) {
+        assertEquals(0, orderRepository.acceptSubmittedOrder(orderId));
+        assertEquals(0, orderRepository.rejectSubmittedOrder(orderId, "REJECTED"));
+        assertEquals(
+                0,
+                orderRepository.fillAcceptedOrder(orderId, new BigDecimal("10.0000"))
+        );
+        assertEquals(0, orderRepository.failAcceptedOrder(orderId, "FAILED"));
     }
 
     private static OrderEntity newOrder(Long clientId, Long instrumentId, int quantity) {
