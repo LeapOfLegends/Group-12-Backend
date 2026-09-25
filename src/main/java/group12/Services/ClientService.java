@@ -34,7 +34,7 @@ public class ClientService {
     public ClientEntity getClientByEmail(String email) {
         ClientEntity client = clientRepository.findByEmail(email);
         if (client == null) {
-            throw new ClientNotFoundException("Client not found with email: " + email);
+            throw new ClientNotFoundException("Client not found with email");
         }
         return client;
     }
