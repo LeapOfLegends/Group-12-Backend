@@ -20,7 +20,7 @@ public interface HoldingRepository {
         FROM holdings 
         WHERE holding_id = #{holdingId} AND client_id = #{client_id}
         """)
-    Optional<HoldingEntity> getHoldingByHoldingIdAndClientId(@Param("holdingId") Long holding_id, @Param("clientId") Long client_id);
+    HoldingEntity getHoldingByHoldingIdAndClientId(@Param("holdingId") Long holding_id, @Param("clientId") Long client_id);
 
     @Select ("""
             SELECT 
@@ -47,7 +47,15 @@ public interface HoldingRepository {
             FROM holdings
             WHERE instrument_id = #{instrumentId} AND client_id = #{clientId}
             """)
-    List<HoldingEntity> getHoldingsByInstrumentIdAndClientId(@Param("instrumentId") Long instrument_id, @Param("clientId") Long client_id);
+    Optional<HoldingEntity> getHoldingByInstrumentIdAndClientId(@Param("instrumentId") Long instrument_id, @Param("clientId") Long client_id);
+
+    @Select ("""
+            SELECT 
+                quantity,
+                average_cost
+            FROM holdings
+            WHERE 
+            """)
 
 
     @Insert("""
@@ -69,8 +77,5 @@ public interface HoldingRepository {
         keyProperty = "holdingId",
         keyColumn = "holding_id"
     )
-
     void insert(HoldingEntity holding);
-
- 
 }

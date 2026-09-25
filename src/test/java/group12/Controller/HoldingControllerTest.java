@@ -5,10 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import java.math.BigDecimal;
 import java.util.List;
-
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -58,14 +57,14 @@ public class HoldingControllerTest {
 
     @Test
     void getInstrumentHoldings_shouldReturn200AndHoldings() {
-        List<HoldingEntity> holdings = List.of(holding(10L, 1L, 25L, 5));
-        when(holdingService.getHoldingsByInstrumentIdAndClientId(25L, 1L)).thenReturn(holdings);
+        HoldingEntity holding = holding(10L, 1L, 25L, 5);
+        when(holdingService.getHoldingByInstrumentIdAndClientId(25L, 1L)).thenReturn(Optional.of(holding));
 
-        ResponseEntity<List<HoldingEntity>> response = holdingController.getInstrumentHoldings(25L, 1L);
+        ResponseEntity<Optional<HoldingEntity>> response = holdingController.getInstrumentHoldings(25L, 1L);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(holdings, response.getBody());
-        verify(holdingService).getHoldingsByInstrumentIdAndClientId(25L, 1L);
+        assertEquals(Optional.of(holding), response.getBody());
+        verify(holdingService).getHoldingByInstrumentIdAndClientId(25L, 1L);
     }
 
     private HoldingEntity holding(Long holdingId, Long clientId, Long instrumentId, Integer quantity) {

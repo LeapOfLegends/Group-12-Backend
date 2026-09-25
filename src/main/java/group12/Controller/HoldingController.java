@@ -6,6 +6,7 @@ import group12.Services.HoldingService;
 import org.springframework.http.ResponseEntity;
 import lombok.RequiredArgsConstructor;
 import java.util.List;
+import java.util.Optional;
 
 
 @RestController 
@@ -33,13 +34,13 @@ public class HoldingController {
     }
 
     @GetMapping("/instrument/{instrumentId}")
-    public ResponseEntity<List<HoldingEntity>> getInstrumentHoldings(
+    public ResponseEntity<Optional<HoldingEntity>> getInstrumentHoldings(
         @PathVariable Long instrumentId,
         @PathVariable Long clientId
     ) {
-        List<HoldingEntity> holdings = holdingService.getHoldingsByInstrumentIdAndClientId(instrumentId, clientId);
+        Optional<HoldingEntity> holding = holdingService.getHoldingByInstrumentIdAndClientId(instrumentId, clientId);
 
-        return ResponseEntity.ok(holdings);
+        return ResponseEntity.ok(holding);
     }
     
 }
