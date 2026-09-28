@@ -55,6 +55,14 @@ public class GlobalExceptionHandler {
         return errorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(HoldingArgumentInvalidException.class)
+    public ResponseEntity<ApiError> handleHoldingQuantityInvalid(
+                HoldingArgumentInvalidException exception,
+                HttpServletRequest request
+    ) {
+        return errorResponse(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+    }
+
     @ExceptionHandler(OrderNotFoundException.class)
     public ResponseEntity<ApiError> handleOrderNotFound(
             OrderNotFoundException exception,
