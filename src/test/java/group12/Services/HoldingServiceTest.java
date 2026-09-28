@@ -9,6 +9,9 @@ import group12.exception.HoldingNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -78,6 +81,30 @@ class HoldingServiceTest {
 
         verify(holdingRepository).getHoldingForDeleteByIdAndClientId(10L, 1L);
         verify(holdingRepository).deleteHoldingByHoldingIdAndClientId(10L, 1L);
+    }
+
+    @Test
+    void updateHolding_preservesFractionalQuantity() {
+        BigDecimal quantity = new BigDecimal("8.12345678");
+        BigDecimal averageCost = new BigDecimal("125.1234567890123456");
+        HoldingEntity existing = holding(10L, 1L);
+        existing.setInstrumentId(25L);
+        when(holdingRepository.getHoldingByInstrumentIdAndClientIdForUpdate(25L, 1L))
+                .thenReturn(existing);
+        when(clientRepository.findById(1L)).thenReturn(new ClientEntity());
+        when(holdingRepository.updateHolding(25L, 1L, quantity, averageCost))
+                .thenReturn(1);
+
+        HoldingEntity result = holdingService.updateHolding(
+                25L,
+                1L,
+                quantity,
+                averageCost
+        );
+
+        assertEquals(quantity, result.getQuantity());
+        assertEquals(averageCost, result.getAverageCost());
+        verify(holdingRepository).updateHolding(25L, 1L, quantity, averageCost);
     }
 
     private HoldingEntity holding(Long holdingId, Long clientId) {

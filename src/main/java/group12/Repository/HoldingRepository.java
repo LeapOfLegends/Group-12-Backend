@@ -19,9 +19,9 @@ public interface HoldingRepository {
             average_cost,
             updated_at
         FROM holdings 
-        WHERE holding_id = #{holdingId} AND client_id = #{client_id}
+        WHERE holding_id = #{holdingId} AND client_id = #{clientId}
         """)
-    HoldingEntity getHoldingByHoldingIdAndClientId(@Param("holdingId") Long holding_id, @Param("clientId") Long client_id);
+    HoldingEntity getHoldingByHoldingIdAndClientId(@Param("holdingId") Long holdingId, @Param("clientId") Long clientId);
 
     @Select ("""
             SELECT 
@@ -34,7 +34,7 @@ public interface HoldingRepository {
             FROM holdings
             WHERE client_id = #{clientId}
             """)
-    List<HoldingEntity> getHoldingsByClientId(@Param("clientId") Long client_id);
+    List<HoldingEntity> getHoldingsByClientId(@Param("clientId") Long clientId);
 
 
     @Select ("""
@@ -48,7 +48,7 @@ public interface HoldingRepository {
             FROM holdings
             WHERE instrument_id = #{instrumentId} AND client_id = #{clientId}
             """)
-    Optional<HoldingEntity> getHoldingByInstrumentIdAndClientId(@Param("instrumentId") Long instrument_id, @Param("clientId") Long client_id);
+    Optional<HoldingEntity> getHoldingByInstrumentIdAndClientId(@Param("instrumentId") Long instrumentId, @Param("clientId") Long clientId);
 
     @Select ("""
             SELECT 
@@ -62,17 +62,24 @@ public interface HoldingRepository {
             WHERE instrument_id = #{instrumentId} AND client_id = #{clientId}
             FOR UPDATE
             """)
-    HoldingEntity getHoldingByInstrumentIdAndClientIdForUpdate(@Param("instrumentId") Long instrument_id, @Param("clientId") Long client_id);
+    HoldingEntity getHoldingByInstrumentIdAndClientIdForUpdate(@Param("instrumentId") Long instrumentId, @Param("clientId") Long clientId);
 
     @Update ("""
             UPDATE 
                 holdings
             SET 
-                quantity = #{quantity}, average_cost = #{averageCost}
+                quantity = #{quantity},
+                average_cost = #{averageCost},
+                updated_at = CURRENT_TIMESTAMP
             WHERE
                 client_id = #{clientId} and instrument_id = #{instrumentId}
             """)
-    int updateHolding(@Param("instrumentId") Long instrument_id, @Param("clientId") Long client_id, @Param("quantity") Integer quantity, @Param("averageCost") BigDecimal average_cost);
+    int updateHolding(
+            @Param("instrumentId") Long instrumentId,
+            @Param("clientId") Long clientId,
+            @Param("quantity") BigDecimal quantity,
+            @Param("averageCost") BigDecimal averageCost
+    );
 
     @Select("""
         SELECT
@@ -83,14 +90,14 @@ public interface HoldingRepository {
             average_cost,
             updated_at
         FROM holdings 
-        WHERE holding_id = #{holdingId} AND client_id = #{client_id}
+        WHERE holding_id = #{holdingId} AND client_id = #{clientId}
         """)
-    HoldingEntity getHoldingForDeleteByIdAndClientId(@Param("holdingId") Long holding_id, @Param("clientId") Long client_id);
+    HoldingEntity getHoldingForDeleteByIdAndClientId(@Param("holdingId") Long holdingId, @Param("clientId") Long clientId);
 
 
     @Delete (
         "DELETE FROM holdings WHERE holding_id = #{holdingId} AND client_id = #{clientId}")
-    void deleteHoldingByHoldingIdAndClientId(@Param("holdingId") Long holdingId, @Param("clientId") Long clientId);
+    int deleteHoldingByHoldingIdAndClientId(@Param("holdingId") Long holdingId, @Param("clientId") Long clientId);
 
 
     @Insert("""
@@ -112,5 +119,5 @@ public interface HoldingRepository {
         keyProperty = "holdingId",
         keyColumn = "holding_id"
     )
-    HoldingEntity insert(HoldingEntity holding);
+    int insert(HoldingEntity holding);
 }

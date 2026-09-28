@@ -4,7 +4,10 @@ import group12.Entities.InstrumentEntity;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,4 +40,32 @@ public interface InstrumentRepository {
         WHERE symbol = #{symbol}
         """)
     Optional<InstrumentEntity> findBySymbol(@Param("symbol") String symbol);
+
+    @Update("""
+        UPDATE instruments
+        SET bid_price = #{bidPrice},
+            ask_price = #{askPrice},
+            quote_as_of = #{quoteAsOf}
+        WHERE instrument_id = #{instrumentId}
+          AND (quote_as_of IS NULL OR quote_as_of < #{quoteAsOf})
+        """)
+    int updateQuoteSnapshot(
+            @Param("instrumentId") Long instrumentId,
+            @Param("bidPrice") BigDecimal bidPrice,
+            @Param("askPrice") BigDecimal askPrice,
+            @Param("quoteAsOf") OffsetDateTime quoteAsOf
+    );
+
+    @Update("""
+        UPDATE instruments
+        SET last_price = #{lastPrice},
+            last_trade_as_of = #{lastTradeAsOf}
+        WHERE instrument_id = #{instrumentId}
+          AND (last_trade_as_of IS NULL OR last_trade_as_of < #{lastTradeAsOf})
+        """)
+    int updateLastTradeSnapshot(
+            @Param("instrumentId") Long instrumentId,
+            @Param("lastPrice") BigDecimal lastPrice,
+            @Param("lastTradeAsOf") OffsetDateTime lastTradeAsOf
+    );
 }
