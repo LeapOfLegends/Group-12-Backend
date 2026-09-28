@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -17,6 +18,7 @@ import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Testcontainers(disabledWithoutDocker = true)
@@ -64,19 +66,33 @@ class ClientRepositoryIntegrationTest {
         assertEquals("Ava", client.getFirstName());
         assertEquals("Martinez", client.getLastName());
         assertEquals("ava@example.com", client.getEmail());
-        assertEquals(new BigDecimal("1000.0000"), client.getAccountBalance());
+        assertEquals(new BigDecimal("1000.0000000000000000"), client.getAccountBalance());
     }
 
     @Test
     void updateAccountBalance_updatesBalanceWithExpectedPrecision() {
         int rowsAffected = clientRepository.updateAccountBalance(
                 clientId,
-                new BigDecimal("1234.5678")
+                new BigDecimal("123456789012345678901234.5678901234567890")
         );
 
         ClientEntity updatedClient = clientRepository.findById(clientId);
         assertEquals(1, rowsAffected);
-        assertEquals(new BigDecimal("1234.5678"), updatedClient.getAccountBalance());
+        assertEquals(
+                new BigDecimal("123456789012345678901234.5678901234567890"),
+                updatedClient.getAccountBalance()
+        );
+    }
+
+    @Test
+    void updateAccountBalance_negativeValueIsRejected() {
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> clientRepository.updateAccountBalance(
+                        clientId,
+                        new BigDecimal("-0.0000000000000001")
+                )
+        );
     }
 
     @Test

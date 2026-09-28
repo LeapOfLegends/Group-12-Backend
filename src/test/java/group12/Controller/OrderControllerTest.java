@@ -9,6 +9,8 @@ import group12.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -20,6 +22,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,7 +41,7 @@ class OrderControllerTest {
     private static final long ORDER_ID = 42L;
     private static final long CLIENT_ID = 10L;
     private static final long INSTRUMENT_ID = 20L;
-    private static final int QUANTITY = 5;
+    private static final BigDecimal QUANTITY = new BigDecimal("5.125");
 
     @Mock
     private OrderService orderService;
@@ -98,7 +101,9 @@ class OrderControllerTest {
     void getClientOrders_whenOrdersExist_returnsJsonArray() throws Exception {
         // Arrange
         OrderEntity firstOrder = order(ORDER_ID, CLIENT_ID, INSTRUMENT_ID, OrderType.BUY, QUANTITY);
-        OrderEntity secondOrder = order(41L, CLIENT_ID, 21L, OrderType.SELL, 2);
+        OrderEntity secondOrder = order(
+                41L, CLIENT_ID, 21L, OrderType.SELL, new BigDecimal("2")
+        );
         when(orderService.getOrdersByClientId(CLIENT_ID)).thenReturn(List.of(firstOrder, secondOrder));
 
         // Act and Assert
@@ -164,19 +169,37 @@ class OrderControllerTest {
         verify(orderService, never()).submitOrder(any(CreateOrderRequest.class));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-0.00000001"})
+    @DisplayName("POST /api/orders rejects non-positive decimal quantities")
+    void submitOrder_withNonPositiveDecimalQuantity_returnsBadRequest(String quantity)
+            throws Exception {
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(orderRequestJson(
+                                CLIENT_ID,
+                                INSTRUMENT_ID,
+                                "BUY",
+                                new BigDecimal(quantity)
+                        )))
+                .andExpect(status().isBadRequest());
+
+        verify(orderService, never()).submitOrder(any(CreateOrderRequest.class));
+    }
+
 
     private static String orderRequestJson(
             long clientId,
             long instrumentId,
             String orderType,
-            int quantity
+            BigDecimal quantity
     ) {
         return """
                 {
                   "clientId": %d,
                   "instrumentId": %d,
                   "orderType": "%s",
-                  "quantity": %d
+                  "quantity": %s
                 }
                 """.formatted(clientId, instrumentId, orderType, quantity);
     }
@@ -186,7 +209,7 @@ class OrderControllerTest {
             Long clientId,
             Long instrumentId,
             OrderType orderType,
-            Integer quantity
+            BigDecimal quantity
     ) {
         OrderEntity order = new OrderEntity();
         order.setOrderId(orderId);

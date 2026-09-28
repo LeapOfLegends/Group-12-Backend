@@ -16,7 +16,7 @@ public class OrderEntity {
     private Long clientId;
     private Long instrumentId;
     private OrderType orderType;
-    private Integer quantity;
+    private BigDecimal quantity;
     private OrderStatus status;
     private OffsetDateTime submittedAt;
     private OffsetDateTime acceptedAt;

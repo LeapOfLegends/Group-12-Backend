@@ -86,8 +86,8 @@ class OrderRepositoryIntegrationTest {
                     client_id, instrument_id, order_type, quantity, status,
                     submitted_at, accepted_at, filled_at, execution_price
                 )
-                VALUES (?, ?, 'BUY', 4, 'FILLED', ?::timestamptz, ?::timestamptz,
-                        ?::timestamptz, 123.4500)
+                VALUES (?, ?, 'BUY', 4.12500000, 'FILLED', ?::timestamptz, ?::timestamptz,
+                        ?::timestamptz, 123.45678901)
                 RETURNING order_id
                 """, Long.class,
                 firstClientId,
@@ -107,11 +107,11 @@ class OrderRepositoryIntegrationTest {
         assertEquals(firstClientId, order.getClientId());
         assertEquals(instrumentId, order.getInstrumentId());
         assertEquals(OrderType.BUY, order.getOrderType());
-        assertEquals(4, order.getQuantity());
+        assertEquals(new BigDecimal("4.12500000"), order.getQuantity());
         assertEquals(OrderStatus.FILLED, order.getStatus());
         assertEquals(Instant.parse("2026-01-02T10:15:30Z"), order.getSubmittedAt().toInstant());
-        assertEquals(new BigDecimal("123.4500"), order.getExecutionPrice());
-        assertEquals(new BigDecimal("493.8000"), order.getTradeValue());
+        assertEquals(new BigDecimal("123.45678901"), order.getExecutionPrice());
+        assertEquals(new BigDecimal("509.2592546662500000"), order.getTradeValue());
         assertNotNull(order.getAcceptedAt());
         assertNotNull(order.getFilledAt());
     }
@@ -129,14 +129,16 @@ class OrderRepositoryIntegrationTest {
         assertEquals(firstClientId, order.getClientId());
         assertEquals(instrumentId, order.getInstrumentId());
         assertEquals(OrderType.BUY, order.getOrderType());
-        assertEquals(3, order.getQuantity());
+        assertEquals(new BigDecimal("3.00000000"), order.getQuantity());
         assertEquals(OrderStatus.SUBMITTED, order.getStatus());
     }
 
     @Test
     void insert_withValidOrder_usesGeneratedIdAndPostgreSqlDefaults() {
         // Arrange
-        OrderEntity newOrder = newOrder(firstClientId, instrumentId, 8);
+        OrderEntity newOrder = newOrder(
+                firstClientId, instrumentId, new BigDecimal("8.12345678")
+        );
 
         // Act
         int rowsAffected = orderRepository.insert(newOrder);
@@ -155,7 +157,7 @@ class OrderRepositoryIntegrationTest {
         assertEquals(firstClientId, persistedOrder.getClientId());
         assertEquals(instrumentId, persistedOrder.getInstrumentId());
         assertEquals(OrderType.BUY, persistedOrder.getOrderType());
-        assertEquals(8, persistedOrder.getQuantity());
+        assertEquals(new BigDecimal("8.12345678"), persistedOrder.getQuantity());
         assertEquals(OrderStatus.SUBMITTED, persistedOrder.getStatus());
         assertNotNull(persistedOrder.getSubmittedAt());
         assertNull(persistedOrder.getExecutionPrice());
@@ -272,18 +274,20 @@ class OrderRepositoryIntegrationTest {
 
     @Test
     void fillAcceptedOrder_whenAccepted_persistsPriceTimestampAndGeneratedTradeValue() {
-        Long orderId = insertOrderWithStatus(OrderStatus.ACCEPTED, 4);
+        Long orderId = insertOrderWithStatus(
+                OrderStatus.ACCEPTED, new BigDecimal("4.12500000")
+        );
 
         int rowsAffected = orderRepository.fillAcceptedOrder(
                 orderId,
-                new BigDecimal("12.3456")
+                new BigDecimal("12.34567890")
         );
 
         OrderEntity order = orderRepository.findById(orderId).orElseThrow();
         assertEquals(1, rowsAffected);
         assertEquals(OrderStatus.FILLED, order.getStatus());
-        assertEquals(new BigDecimal("12.3456"), order.getExecutionPrice());
-        assertEquals(new BigDecimal("49.3824"), order.getTradeValue());
+        assertEquals(new BigDecimal("12.34567890"), order.getExecutionPrice());
+        assertEquals(new BigDecimal("50.9259254625000000"), order.getTradeValue());
         assertNotNull(order.getFilledAt());
     }
 
@@ -406,9 +410,9 @@ class OrderRepositoryIntegrationTest {
     private Long insertInstrument(String symbol) {
         return jdbcTemplate.queryForObject("""
                 INSERT INTO instruments (
-                    symbol, instrument_name, asset_class, currency, is_tradable, price
+                    symbol, instrument_name, asset_class, currency, is_tradable
                 )
-                VALUES (?, 'Test Instrument', 'Equity', 'USD', TRUE, 10.0000)
+                VALUES (?, 'Test Instrument', 'Equity', 'USD', TRUE)
                 RETURNING instrument_id
                 """, Long.class, symbol);
     }
@@ -424,6 +428,10 @@ class OrderRepositoryIntegrationTest {
     }
 
     private Long insertOrderWithStatus(OrderStatus status, int quantity) {
+        return insertOrderWithStatus(status, BigDecimal.valueOf(quantity));
+    }
+
+    private Long insertOrderWithStatus(OrderStatus status, BigDecimal quantity) {
         return jdbcTemplate.queryForObject("""
                 INSERT INTO orders (
                     client_id, instrument_id, order_type, quantity, status
@@ -444,6 +452,14 @@ class OrderRepositoryIntegrationTest {
     }
 
     private static OrderEntity newOrder(Long clientId, Long instrumentId, int quantity) {
+        return newOrder(clientId, instrumentId, BigDecimal.valueOf(quantity));
+    }
+
+    private static OrderEntity newOrder(
+            Long clientId,
+            Long instrumentId,
+            BigDecimal quantity
+    ) {
         OrderEntity order = new OrderEntity();
         order.setClientId(clientId);
         order.setInstrumentId(instrumentId);

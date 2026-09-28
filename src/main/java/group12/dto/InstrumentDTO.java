@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -18,5 +19,9 @@ public class InstrumentDTO {
     private String assetClass;
     private String currency;
     private boolean tradable;
-    private BigDecimal price;
+    private BigDecimal bidPrice;
+    private BigDecimal askPrice;
+    private BigDecimal lastPrice;
+    private OffsetDateTime quoteAsOf;
+    private OffsetDateTime lastTradeAsOf;
 }
