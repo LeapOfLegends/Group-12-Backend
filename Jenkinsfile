@@ -26,13 +26,20 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                //sh 'mvn clean package -DskipTests'
+                sh 'mvn test verify'
             }
         }
 
         stage('Test') {
             steps {
                 sh 'mvn test'
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t capstone-backend .'
             }
         }
     }
