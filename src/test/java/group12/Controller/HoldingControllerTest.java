@@ -2,6 +2,7 @@ package group12.Controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import group12.Entities.HoldingEntity;
 import group12.Services.HoldingService;
+import group12.dto.HoldingUpdateRequest;
 
 public class HoldingControllerTest {
 
@@ -65,6 +67,29 @@ public class HoldingControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(Optional.of(holding), response.getBody());
         verify(holdingService).getHoldingByInstrumentIdAndClientId(25L, 1L);
+    }
+
+    @Test
+    void updateHolding_shouldReturn200AndUpdatedHolding() {
+        HoldingEntity updated = holding(10L, 1L, 25L, 8);
+        updated.setAverageCost(new BigDecimal("125.50"));
+        HoldingUpdateRequest request = new HoldingUpdateRequest(8, new BigDecimal("125.50"));
+        when(holdingService.updateHolding(25L, 1L, 8, new BigDecimal("125.50"))).thenReturn(updated);
+
+        ResponseEntity<HoldingEntity> response = holdingController.updateHolding(25L, 1L, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(updated, response.getBody());
+        verify(holdingService).updateHolding(25L, 1L, 8, new BigDecimal("125.50"));
+    }
+
+    @Test
+    void deleteHolding_shouldReturn204WithoutBody() {
+        ResponseEntity<Void> response = holdingController.deleteHolding(10L, 1L);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertNull(response.getBody());
+        verify(holdingService).deleteHolding(10L, 1L);
     }
 
     private HoldingEntity holding(Long holdingId, Long clientId, Long instrumentId, Integer quantity) {
