@@ -30,7 +30,7 @@ public class HoldingControllerTest {
 
     @Test
     void getHolding_shouldReturn200AndHolding_whenHoldingExists() {
-        HoldingEntity holding = holding(10L, 1L, 25L, 5);
+        HoldingEntity holding = holding(10L, 1L, 25L, new BigDecimal("5.125"));
         when(holdingService.getHoldingByHoldingIdAndClientId(10L, 1L)).thenReturn(holding);
 
         ResponseEntity<HoldingEntity> response = holdingController.getHolding(10L, 1L);
@@ -39,15 +39,15 @@ public class HoldingControllerTest {
         assertNotNull(response.getBody());
         assertEquals(10L, response.getBody().getHoldingId());
         assertEquals(25L, response.getBody().getInstrumentId());
-        assertEquals(5, response.getBody().getQuantity());
+        assertEquals(new BigDecimal("5.125"), response.getBody().getQuantity());
         verify(holdingService).getHoldingByHoldingIdAndClientId(10L, 1L);
     }
 
     @Test
     void getClientHoldings_shouldReturn200AndHoldings() {
         List<HoldingEntity> holdings = List.of(
-            holding(10L, 1L, 25L, 5),
-            holding(11L, 1L, 30L, 2)
+            holding(10L, 1L, 25L, new BigDecimal("5.125")),
+            holding(11L, 1L, 30L, new BigDecimal("2.25"))
         );
         when(holdingService.getHoldingsByClientId(1L)).thenReturn(holdings);
 
@@ -59,8 +59,11 @@ public class HoldingControllerTest {
 
     @Test
     void getInstrumentHoldings_shouldReturn200AndHoldings() {
-        HoldingEntity holding = holding(10L, 1L, 25L, 5);
-        when(holdingService.getHoldingByInstrumentIdAndClientId(25L, 1L)).thenReturn(Optional.of(holding));
+
+        List<HoldingEntity> holdings = List.of(
+                holding(10L, 1L, 25L, new BigDecimal("5.125"))
+        );
+        when(holdingService.getHoldingsByInstrumentIdAndClientId(25L, 1L)).thenReturn(holdings);
 
         ResponseEntity<Optional<HoldingEntity>> response = holdingController.getInstrumentHoldings(25L, 1L);
 
@@ -92,7 +95,12 @@ public class HoldingControllerTest {
         verify(holdingService).deleteHolding(10L, 1L);
     }
 
-    private HoldingEntity holding(Long holdingId, Long clientId, Long instrumentId, Integer quantity) {
+    private HoldingEntity holding(
+            Long holdingId,
+            Long clientId,
+            Long instrumentId,
+            BigDecimal quantity
+    ) {
         HoldingEntity holding = new HoldingEntity();
         holding.setHoldingId(holdingId);
         holding.setClientId(clientId);

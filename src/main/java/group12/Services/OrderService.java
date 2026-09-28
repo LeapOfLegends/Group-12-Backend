@@ -5,7 +5,6 @@ import group12.Entities.OrderEntity;
 import group12.Repository.OrderRepository;
 import group12.exception.OrderNotFoundException;
 import group12.exception.OrderSubmissionException;
-import group12.exception.ClientNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

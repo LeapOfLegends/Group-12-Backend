@@ -13,7 +13,8 @@ public interface InstrumentRepository {
 
     @Select("""
         SELECT instrument_id, symbol, instrument_name, asset_class,
-               currency, is_tradable, price
+               currency, is_tradable, bid_price, ask_price, last_price,
+               quote_as_of, last_trade_as_of
         FROM instruments
         ORDER BY symbol
         """)
@@ -21,7 +22,8 @@ public interface InstrumentRepository {
 
     @Select("""
         SELECT instrument_id, symbol, instrument_name, asset_class,
-               currency, is_tradable, price
+               currency, is_tradable, bid_price, ask_price, last_price,
+               quote_as_of, last_trade_as_of
         FROM instruments
         WHERE instrument_id = #{instrumentId}
         """)
@@ -29,7 +31,8 @@ public interface InstrumentRepository {
 
     @Select("""
         SELECT instrument_id, symbol, instrument_name, asset_class,
-               currency, is_tradable, price
+               currency, is_tradable, bid_price, ask_price, last_price,
+               quote_as_of, last_trade_as_of
         FROM instruments
         WHERE symbol = #{symbol}
         """)
