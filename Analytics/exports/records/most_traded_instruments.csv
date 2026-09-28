@@ -2,10 +2,10 @@ instrument_id,symbol,traded_orders
 6,US10Y,2
 2,MSFT,2
 1,AAPL,2
+4,TSLA,1
+19,KO,1
+35,AGG,1
+42,DE10Y,1
 22,DIS,1
 43,SOL,1
-11,ORCL,1
 40,US5Y,1
-48,LINK,1
-26,PFE,1
-15,NVDA,1
