@@ -8,13 +8,11 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            steps {
-                checkout([$class: 'GitSCM',
-                    branches: [[name: '*/main']],
-                    userRemoteConfigs: [[url: 'https://github.com/LeapOfLegends/Group-12-Backend.git']]])
-                sh 'git log --oneline -1'
-            }
-        }
+    steps {
+        checkout scm
+        sh 'git log --oneline -1'
+    }
+}
         
 
         stage('Sanity check') {
