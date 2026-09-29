@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Positive;
 public record HoldingUpdateRequest(
         @NotNull(message = "Quantity is required")
         @Positive(message = "Quantity must be greater than zero")
-        Integer quantity,
+        BigDecimal quantity,
 
         @NotNull(message = "Average cost is required")
         @DecimalMin(value = "0.0", inclusive = false, message = "Average cost must be greater than zero")

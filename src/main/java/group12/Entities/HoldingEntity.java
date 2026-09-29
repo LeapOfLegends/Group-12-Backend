@@ -15,7 +15,7 @@ public class HoldingEntity {
     private Long holdingId;
     private Long clientId;
     private Long instrumentId;
-    private Integer quantity;
+    private BigDecimal quantity;
     private BigDecimal averageCost;
     private OffsetDateTime updatedAt;
 }

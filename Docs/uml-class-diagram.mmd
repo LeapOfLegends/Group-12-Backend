@@ -51,9 +51,12 @@ classDiagram
         -AssetClass assetClass
         -String market
         -String currency
-        -Decimal price
+        -Decimal? bidPrice
+        -Decimal? askPrice
+        -Decimal? lastPrice
+        -DateTime? quoteAsOf
+        -DateTime? lastTradeAsOf
         -Boolean isTradable
-        +updatePrice(Decimal newPrice) void
         +markTradable() void
         +markUntradable() void
     }

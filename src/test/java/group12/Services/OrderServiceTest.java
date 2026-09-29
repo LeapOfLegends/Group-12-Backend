@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.math.BigDecimal;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -45,8 +46,12 @@ class OrderServiceTest {
     @DisplayName("submitOrder inserts new order with correct details and returns persisted order from repository")
     void submitOrder_withValidRequest_insertsAndReturnsPersistedOrder() {
         // Arrange
-        CreateOrderRequest request = new CreateOrderRequest(10L, 20L, OrderType.BUY, 7);
-        OrderEntity persistedOrder = order(42L, 10L, 20L, OrderType.BUY, 7);
+        CreateOrderRequest request = new CreateOrderRequest(
+                10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
+        );
+        OrderEntity persistedOrder = order(
+                42L, 10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
+        );
         persistedOrder.setStatus(OrderStatus.SUBMITTED);
 
         doAnswer(invocation -> {
@@ -66,7 +71,7 @@ class OrderServiceTest {
         assertEquals(10L, insertedOrder.getClientId());
         assertEquals(20L, insertedOrder.getInstrumentId());
         assertEquals(OrderType.BUY, insertedOrder.getOrderType());
-        assertEquals(7, insertedOrder.getQuantity());
+        assertEquals(new BigDecimal("7.12500000"), insertedOrder.getQuantity());
         verify(orderRepository).findById(42L);
         assertSame(persistedOrder, result);
     }
@@ -75,7 +80,9 @@ class OrderServiceTest {
     @DisplayName("getOrderById retrieves and returns order when it exists in repository")
     void getOrderById_whenOrderExists_returnsOrder() {
         // Arrange
-        OrderEntity expectedOrder = order(42L, 10L, 20L, OrderType.BUY, 3);
+        OrderEntity expectedOrder = order(
+                42L, 10L, 20L, OrderType.BUY, new BigDecimal("3")
+        );
         when(orderRepository.findById(42L)).thenReturn(Optional.of(expectedOrder));
 
         // Act
@@ -106,8 +113,8 @@ class OrderServiceTest {
     void getOrdersByClientId_returnsRepositoryResults() {
         // Arrange
         List<OrderEntity> expectedOrders = List.of(
-                order(42L, 10L, 20L, OrderType.BUY, 3),
-                order(41L, 10L, 21L, OrderType.SELL, 2)
+                order(42L, 10L, 20L, OrderType.BUY, new BigDecimal("3")),
+                order(41L, 10L, 21L, OrderType.SELL, new BigDecimal("2"))
         );
         when(orderRepository.findByClientId(10L)).thenReturn(expectedOrders);
 
@@ -125,7 +132,7 @@ class OrderServiceTest {
             Long clientId,
             Long instrumentId,
             OrderType orderType,
-            Integer quantity
+            BigDecimal quantity
     ) {
         OrderEntity order = new OrderEntity();
         order.setOrderId(orderId);

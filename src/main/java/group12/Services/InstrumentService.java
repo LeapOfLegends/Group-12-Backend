@@ -66,7 +66,11 @@ public class InstrumentService {
                 instrument.getAssetClass(),
                 instrument.getCurrency(),
                 instrument.isTradable(),
-                instrument.getPrice()
+                instrument.getBidPrice(),
+                instrument.getAskPrice(),
+                instrument.getLastPrice(),
+                instrument.getQuoteAsOf(),
+                instrument.getLastTradeAsOf()
         );
     }
 }
