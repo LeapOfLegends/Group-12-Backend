@@ -14,8 +14,8 @@ pipeline {
                     userRemoteConfigs: [[url: 'https://github.com/LeapOfLegends/Group-12-Backend.git']]])
                 sh 'git log --oneline -1'
             }
-            }
         }
+        
 
         stage('Sanity check') {
             steps {
@@ -42,8 +42,21 @@ pipeline {
         }
 
         stage('Docker Build') {
+    steps {
+        sh 'docker build -t capstone-backend:${BUILD_NUMBER} .'
+        sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:latest'
+        }
+    }
+    stage('Deploy to VM') {
+            when {
+                branch 'main'
+            }
             steps {
-                sh 'docker build -t capstone-backend .'
+                sh '''
+                    docker stop capstone-backend || true
+                    docker rm capstone-backend || true
+                    docker run -d --name capstone-backend -p 8080:8080 capstone-backend:latest
+                '''
             }
         }
     }
