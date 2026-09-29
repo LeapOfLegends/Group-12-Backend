@@ -13,6 +13,7 @@ import group12.marketdata.exception.MarketDataTimeoutException;
 import group12.marketdata.exception.MarketDataUnavailableException;
 import group12.marketdata.exception.UnsupportedInstrumentException;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
@@ -25,7 +26,14 @@ import java.net.SocketTimeoutException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Locale;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 @Component
 // handles the retrieval of market data snapshots from alpaca by building/sending HTTP requests, deserializing responses, and returning data
@@ -50,9 +58,7 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         String symbol = validateInstrument(instrument);
         validateConfiguration();
 
-        AlpacaSnapshotResponse response;
-        try {
-            response = restClient.get()
+        AlpacaSnapshotResponse response = executeRequest(() -> restClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/v2/stocks/{symbol}/snapshot")
                             .queryParam("feed", properties.getFeed())
@@ -60,53 +66,69 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
                     .header(API_KEY_HEADER, properties.getApiKey())
                     .header(SECRET_KEY_HEADER, properties.getSecretKey())
                     .retrieve()
-                    .onStatus(
-                            status -> status.value() == 401 || status.value() == 403,
-                            (request, providerResponse) -> {
-                                throw new MarketDataAuthenticationException();
-                            }
-                    )
-                    .onStatus(
-                            status -> status.value() == 429,
-                            (request, providerResponse) -> {
-                                throw new MarketDataRateLimitException();
-                            }
-                    )
-                    .onStatus(
-                            HttpStatusCode::is5xxServerError,
-                            (request, providerResponse) -> {
-                                throw new MarketDataProviderException(
-                                        "Market-data provider is unavailable"
-                                );
-                            }
-                    )
-                    .onStatus(
-                            HttpStatusCode::is4xxClientError,
-                            (request, providerResponse) -> {
-                                throw new MarketDataProviderException(
-                                        "Market-data provider rejected the request"
-                                );
-                            }
-                    )
-                    .body(AlpacaSnapshotResponse.class);
-        } catch (MarketDataException exception) {
-            throw exception;
-        } catch (ResourceAccessException exception) {
-            if (causedByTimeout(exception)) {
-                throw new MarketDataTimeoutException(exception);
-            }
-            throw new MarketDataProviderException(
-                    "Market-data provider could not be reached",
-                    exception
-            );
-        } catch (RestClientException exception) {
-            throw new MarketDataResponseException(
-                    "Market-data provider returned a malformed response",
-                    exception
+                    .onStatus(this::isAuthenticationFailure, this::throwAuthenticationFailure)
+                    .onStatus(status -> status.value() == 429, this::throwRateLimitFailure)
+                    .onStatus(HttpStatusCode::is5xxServerError, this::throwServerFailure)
+                    .onStatus(HttpStatusCode::is4xxClientError, this::throwClientFailure)
+                    .body(AlpacaSnapshotResponse.class));
+
+        return mapResponse(symbol, response);
+    }
+
+    @Override
+    public Map<String, MarketSnapshot> getCurrentMarketSnapshots(
+            Collection<InstrumentEntity> instruments
+    ) {
+        if (instruments == null || instruments.isEmpty()) {
+            return Map.of();
+        }
+        validateConfiguration();
+
+        Set<String> uniqueSymbols = instruments.stream()
+                .map(this::validateInstrument)
+                .collect(Collectors.toCollection(java.util.TreeSet::new));
+        if (uniqueSymbols.size() > 50) {
+            throw new MarketDataConfigurationException(
+                    "A batch market-data request cannot contain more than 50 symbols"
             );
         }
 
-        return mapResponse(symbol, response);
+        String symbols = String.join(",", uniqueSymbols);
+        Map<String, AlpacaSnapshotData> response = executeRequest(() -> restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v2/stocks/snapshots")
+                        .queryParam("symbols", symbols)
+                        .queryParam("feed", properties.getFeed())
+                        .build())
+                .header(API_KEY_HEADER, properties.getApiKey())
+                .header(SECRET_KEY_HEADER, properties.getSecretKey())
+                .retrieve()
+                .onStatus(this::isAuthenticationFailure, this::throwAuthenticationFailure)
+                .onStatus(status -> status.value() == 429, this::throwRateLimitFailure)
+                .onStatus(HttpStatusCode::is5xxServerError, this::throwServerFailure)
+                .onStatus(HttpStatusCode::is4xxClientError, this::throwClientFailure)
+                .body(new ParameterizedTypeReference<>() {
+                }));
+
+        if (response == null) {
+            throw new MarketDataResponseException(
+                    "Market-data provider returned a malformed batch response"
+            );
+        }
+
+        Map<String, MarketSnapshot> snapshots = new LinkedHashMap<>();
+        response.forEach((responseSymbol, data) -> {
+            String symbol = normalizeSymbol(responseSymbol);
+            if (!uniqueSymbols.contains(symbol)) {
+                return;
+            }
+            try {
+                snapshots.put(symbol, mapSnapshot(symbol, data));
+            } catch (MarketDataResponseException | MarketDataUnavailableException exception) {
+                // A bad snapshot for one symbol must not discard valid snapshots for others.
+            }
+        });
+        return Map.copyOf(snapshots);
     }
 
     private String validateInstrument(InstrumentEntity instrument) {
@@ -114,6 +136,7 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
                 ? ""
                 : instrument.getSymbol().trim().toUpperCase(Locale.ROOT);
         boolean supportedType = instrument != null
+                && instrument.isTradable()
                 && "Equity".equalsIgnoreCase(instrument.getAssetClass())
                 && "USD".equalsIgnoreCase(instrument.getCurrency());
 
@@ -147,10 +170,20 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
             );
         }
 
-        QuoteValues quote = mapQuote(response.latestQuote());
-        TradeValues trade = mapTrade(response.latestTrade());
+        return mapSnapshot(
+                requestedSymbol,
+                new AlpacaSnapshotData(response.latestQuote(), response.latestTrade())
+        );
+    }
+
+    private MarketSnapshot mapSnapshot(String symbol, AlpacaSnapshotData data) {
+        if (data == null) {
+            throw new MarketDataUnavailableException(symbol);
+        }
+        QuoteValues quote = mapQuote(data.latestQuote());
+        TradeValues trade = mapTrade(data.latestTrade());
         if (quote == null && trade == null) {
-            throw new MarketDataUnavailableException(requestedSymbol);
+            throw new MarketDataUnavailableException(symbol);
         }
 
         return new MarketSnapshot(
@@ -213,9 +246,73 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         return false;
     }
 
+    private <T> T executeRequest(Supplier<T> request) {
+        try {
+            return request.get();
+        } catch (MarketDataException exception) {
+            throw exception;
+        } catch (ResourceAccessException exception) {
+            if (causedByTimeout(exception)) {
+                throw new MarketDataTimeoutException(exception);
+            }
+            throw new MarketDataProviderException(
+                    "Market-data provider could not be reached",
+                    exception
+            );
+        } catch (RestClientException exception) {
+            throw new MarketDataResponseException(
+                    "Market-data provider returned a malformed response",
+                    exception
+            );
+        }
+    }
+
+    private boolean isAuthenticationFailure(HttpStatusCode status) {
+        return status.value() == 401 || status.value() == 403;
+    }
+
+    private void throwAuthenticationFailure(
+            org.springframework.http.HttpRequest request,
+            org.springframework.http.client.ClientHttpResponse response
+    ) {
+        throw new MarketDataAuthenticationException();
+    }
+
+    private void throwRateLimitFailure(
+            org.springframework.http.HttpRequest request,
+            org.springframework.http.client.ClientHttpResponse response
+    ) {
+        throw new MarketDataRateLimitException();
+    }
+
+    private void throwServerFailure(
+            org.springframework.http.HttpRequest request,
+            org.springframework.http.client.ClientHttpResponse response
+    ) {
+        throw new MarketDataProviderException("Market-data provider is unavailable");
+    }
+
+    private void throwClientFailure(
+            org.springframework.http.HttpRequest request,
+            org.springframework.http.client.ClientHttpResponse response
+    ) {
+        throw new MarketDataProviderException("Market-data provider rejected the request");
+    }
+
+    private String normalizeSymbol(String symbol) {
+        return symbol == null ? "" : symbol.trim().toUpperCase(Locale.ROOT);
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record AlpacaSnapshotResponse(
             String symbol,
+            @JsonProperty("latestQuote") AlpacaQuote latestQuote,
+            @JsonProperty("latestTrade") AlpacaTrade latestTrade
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record AlpacaSnapshotData(
             @JsonProperty("latestQuote") AlpacaQuote latestQuote,
             @JsonProperty("latestTrade") AlpacaTrade latestTrade
     ) {

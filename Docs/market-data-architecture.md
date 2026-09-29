@@ -10,18 +10,18 @@ We now have the foundations for retrieving a current US-equity market snapshot f
 
 This solves two related problems. First, we need to distinguish the price a simulated buyer would pay from the price a simulated seller would receive. Second, it needs a last-known price for instrument display and eventual portfolio valuation. These values cannot safely be represented by one generic `price` field.
 
-The implementation is deliberately decoupled from Alpaca in case we want to switch data providers. `MarketDataProvider` exposes a `MarketSnapshot`; `AlpacaMarketDataClient` implements that contract using Alpaca's free IEX stock snapshot endpoint. `MarketDataRefreshService` coordinates one refresh, while `MarketSnapshotPersistenceService` writes complete observations through timestamp-guarded methods already present in `InstrumentRepository`.
+The implementation is deliberately decoupled from Alpaca in case we want to switch data providers. `MarketDataProvider` exposes single-instrument and batch snapshot operations. `AlpacaMarketDataClient` implements both operations using Alpaca's free IEX endpoints. When explicitly enabled, `MarketDataBatchScheduler` starts one fixed-delay refresh cycle every five seconds and updates up to 50 configured US equities in one HTTP request.
 
 Current scope is narrower than a complete trading workflow:
 
 | Implemented now | Not implemented yet |
 |---|---|
-| Alpaca IEX snapshot request and JSON mapping | Scheduled or automatic refresh |
-| Bid, ask, last price, and observation timestamps | A production caller for `refreshInstrument` |
+| Alpaca IEX single and batch snapshot mapping | Scheduler coordination across multiple application instances |
+| Opt-in five-second fixed-delay batch refresh | On-demand execution pricing caller |
 | Validation and typed provider failures | BUY/SELL order acceptance or execution |
 | Last-known snapshot persistence | Execution-price freshness rules |
 | Read exposure through existing instrument APIs | Market-hours/trading-calendar checks |
-| Configurable supported-symbol allowlist | Historical price storage |
+| Configurable supported-symbol allowlist, capped at 50 | Historical price storage |
 
 No code currently submits a real or paper order to Alpaca. The intended BUY-at-ask and SELL-at-bid behavior remains future simulated-execution work.
 
@@ -59,8 +59,9 @@ The current code retrieves and stores these values but does not yet apply them t
 
 ```mermaid
 flowchart LR
-    Caller["Internal caller<br/>(none wired in production yet)"]
-    Refresh[MarketDataRefreshService]
+    Scheduler["MarketDataBatchScheduler<br/>disabled by default"]
+    Batch[MarketDataBatchRefreshService]
+    OnDemand["MarketDataRefreshService<br/>future on-demand use"]
     Provider[MarketDataProvider]
     Client[AlpacaMarketDataClient]
     Http[Spring RestClient]
@@ -71,16 +72,20 @@ flowchart LR
     Database[(PostgreSQL)]
     InstrumentApi["InstrumentController / InstrumentService"]
 
-    Caller -. future invocation .-> Refresh
-    Refresh -->|findById| Repository
-    Refresh -->|getCurrentMarketSnapshot| Provider
+    Scheduler -->|fixed delay| Batch
+    Batch -->|find eligible instruments| Repository
+    Batch -->|one getCurrentMarketSnapshots call| Provider
+    OnDemand -->|findById| Repository
+    OnDemand -->|getCurrentMarketSnapshot| Provider
     Client -. implements .-> Provider
     Client --> Http
     Http -->|HTTPS GET| Alpaca
     Alpaca -->|JSON| Http
     Client -->|creates| Snapshot
-    Provider -->|returns snapshot| Refresh
-    Refresh -->|persist after HTTP completes| Persistence
+    Provider -->|returns snapshot map| Batch
+    Provider -->|returns one snapshot| OnDemand
+    Batch -->|one transaction per instrument| Persistence
+    OnDemand -->|persist after HTTP completes| Persistence
     Persistence -->|conditional updates| Repository
     Repository --> Database
     InstrumentApi -->|read cached fields| Repository
@@ -93,12 +98,14 @@ flowchart LR
 | Component | Responsibility and reason | Dependencies | Called by | Business logic? |
 |---|---|---|---|---|
 | `MarketSnapshot` | Provider-neutral value containing coherent quote and trade groups | Java `BigDecimal`, `OffsetDateTime` | Provider and refresh/persistence services | Yes: group-coherence invariant |
-| `MarketDataProvider` | Stable boundary for retrieving current market data | `InstrumentEntity`, `MarketSnapshot` | `MarketDataRefreshService` | No; it is a contract |
+| `MarketDataProvider` | Stable boundary for retrieving one snapshot or a batch | `InstrumentEntity`, `MarketSnapshot` | Batch and on-demand refresh services | No; it is a contract |
 | `AlpacaMarketDataClient` | Alpaca HTTP request, JSON mapping, validation, timestamp normalization, and failure translation | `RestClient`, `AlpacaProperties` | Through `MarketDataProvider` | Yes, at the integration boundary |
 | `AlpacaProperties` | Typed binding for credentials, URLs, feed, timeouts, and eligible symbols | Spring configuration binding | Configuration and client | Small amount: symbol normalization |
 | `AlpacaMarketDataConfiguration` | Builds a specifically qualified `RestClient` with base URL and timeouts | JDK `HttpClient`, Spring `RestClient` | Spring container | No |
-| `MarketDataRefreshService` | Finds an instrument, performs the provider call, and then delegates persistence | Repository, provider, persistence service | No production caller currently | Sequencing only |
-| `MarketSnapshotPersistenceService` | Atomically writes the complete groups that are present | `InstrumentRepository`, Spring transactions | Refresh service | Persistence orchestration only |
+| `MarketDataBatchScheduler` | Runs non-overlapping, fixed-delay cycles and applies a cooldown after HTTP 429 | Batch refresh service, clock | Spring scheduler | Scheduling policy |
+| `MarketDataBatchRefreshService` | Selects eligible instruments, makes one batch provider call, and persists each instrument independently | Repository, provider, properties, persistence service | Batch scheduler | Eligibility and batch orchestration |
+| `MarketDataRefreshService` | Preserves the single-instrument path for future on-demand pricing | Repository, provider, persistence service | No production caller currently | Sequencing only |
+| `MarketSnapshotPersistenceService` | Atomically writes the complete groups that are present for one instrument | `InstrumentRepository`, Spring transactions | Batch and on-demand refresh services | Persistence orchestration only |
 | `InstrumentRepository` | Reads instruments and performs timestamp-guarded quote/trade updates | MyBatis and PostgreSQL | Refresh/persistence and existing instrument services | Update rules are encoded in SQL |
 | `InstrumentService` / `InstrumentController` | Returns last-known cached fields to API consumers | `InstrumentRepository` | HTTP clients using `/instruments` | Mapping/read behavior only |
 

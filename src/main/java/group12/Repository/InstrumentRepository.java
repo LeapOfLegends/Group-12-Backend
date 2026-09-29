@@ -16,7 +16,7 @@ public interface InstrumentRepository {
 
     @Select("""
         SELECT instrument_id, symbol, instrument_name, asset_class,
-               currency, is_tradable, bid_price, ask_price, last_price,
+               currency, is_tradable AS tradable, bid_price, ask_price, last_price,
                quote_as_of, last_trade_as_of
         FROM instruments
         ORDER BY symbol
@@ -25,7 +25,7 @@ public interface InstrumentRepository {
 
     @Select("""
         SELECT instrument_id, symbol, instrument_name, asset_class,
-               currency, is_tradable, bid_price, ask_price, last_price,
+               currency, is_tradable AS tradable, bid_price, ask_price, last_price,
                quote_as_of, last_trade_as_of
         FROM instruments
         WHERE instrument_id = #{instrumentId}
@@ -34,12 +34,24 @@ public interface InstrumentRepository {
 
     @Select("""
         SELECT instrument_id, symbol, instrument_name, asset_class,
-               currency, is_tradable, bid_price, ask_price, last_price,
+               currency, is_tradable AS tradable, bid_price, ask_price, last_price,
                quote_as_of, last_trade_as_of
         FROM instruments
         WHERE symbol = #{symbol}
         """)
     Optional<InstrumentEntity> findBySymbol(@Param("symbol") String symbol);
+
+    @Select("""
+        SELECT instrument_id, symbol, instrument_name, asset_class,
+               currency, is_tradable AS tradable, bid_price, ask_price, last_price,
+               quote_as_of, last_trade_as_of
+        FROM instruments
+        WHERE is_tradable = TRUE
+          AND UPPER(asset_class) = 'EQUITY'
+          AND UPPER(currency) = 'USD'
+        ORDER BY symbol, instrument_id
+        """)
+    List<InstrumentEntity> findTradableUsdEquities();
 
     @Update("""
         UPDATE instruments
@@ -47,6 +59,7 @@ public interface InstrumentRepository {
             ask_price = #{askPrice},
             quote_as_of = #{quoteAsOf}
         WHERE instrument_id = #{instrumentId}
+          AND is_tradable = TRUE
           AND (quote_as_of IS NULL OR quote_as_of < #{quoteAsOf})
         """)
     int updateQuoteSnapshot(
@@ -61,6 +74,7 @@ public interface InstrumentRepository {
         SET last_price = #{lastPrice},
             last_trade_as_of = #{lastTradeAsOf}
         WHERE instrument_id = #{instrumentId}
+          AND is_tradable = TRUE
           AND (last_trade_as_of IS NULL OR last_trade_as_of < #{lastTradeAsOf})
         """)
     int updateLastTradeSnapshot(

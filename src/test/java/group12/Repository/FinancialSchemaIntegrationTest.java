@@ -27,9 +27,11 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Testcontainers(disabledWithoutDocker = true)
@@ -119,6 +121,58 @@ class FinancialSchemaIntegrationTest {
                 lastTradeAsOf.toInstant(),
                 instrument.getLastTradeAsOf().toInstant()
         );
+    }
+
+    @Test
+    void instrument_isTradableColumnMapsToTradableProperty() {
+        assertTrue(instrumentRepository.findById(instrumentId).orElseThrow().isTradable());
+
+        jdbcTemplate.update(
+                "UPDATE instruments SET is_tradable = FALSE WHERE instrument_id = ?",
+                instrumentId
+        );
+
+        assertFalse(instrumentRepository.findById(instrumentId).orElseThrow().isTradable());
+    }
+
+    @Test
+    void nonTradableInstrumentPreservesItsCachedMarketSnapshot() {
+        OffsetDateTime initialAt = OffsetDateTime.parse("2026-09-29T15:00:00Z");
+        OffsetDateTime newerAt = initialAt.plusSeconds(1);
+        instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("10.00000000"),
+                new BigDecimal("10.10000000"),
+                initialAt
+        );
+        instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("10.05000000"),
+                initialAt
+        );
+        jdbcTemplate.update(
+                "UPDATE instruments SET is_tradable = FALSE WHERE instrument_id = ?",
+                instrumentId
+        );
+
+        assertEquals(0, instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("20.00000000"),
+                new BigDecimal("20.10000000"),
+                newerAt
+        ));
+        assertEquals(0, instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("20.05000000"),
+                newerAt
+        ));
+
+        InstrumentEntity persisted = instrumentRepository.findById(instrumentId).orElseThrow();
+        assertEquals(new BigDecimal("10.00000000"), persisted.getBidPrice());
+        assertEquals(new BigDecimal("10.10000000"), persisted.getAskPrice());
+        assertEquals(new BigDecimal("10.05000000"), persisted.getLastPrice());
+        assertEquals(initialAt.toInstant(), persisted.getQuoteAsOf().toInstant());
+        assertEquals(initialAt.toInstant(), persisted.getLastTradeAsOf().toInstant());
     }
 
     @Test

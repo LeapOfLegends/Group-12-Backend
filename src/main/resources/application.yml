@@ -29,3 +29,8 @@ alpaca:
     connect-timeout: ${ALPACA_CONNECT_TIMEOUT:2s}
     read-timeout: ${ALPACA_READ_TIMEOUT:5s}
     supported-us-equity-symbols: ${ALPACA_SUPPORTED_US_EQUITY_SYMBOLS:}
+
+market-data:
+    refresh:
+        enabled: ${MARKET_DATA_REFRESH_ENABLED:false}
+        interval: ${MARKET_DATA_REFRESH_INTERVAL:5s}
