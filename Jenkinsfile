@@ -9,7 +9,11 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                echo 'Repo checked out'
+                checkout([$class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[url: 'https://github.com/LeapOfLegends/Group-12-Backend.git']]])
+                sh 'git log --oneline -1'
+            }
             }
         }
 
