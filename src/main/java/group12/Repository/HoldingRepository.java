@@ -112,5 +112,5 @@ public interface HoldingRepository {
         keyProperty = "holdingId",
         keyColumn = "holding_id"
     )
-    HoldingEntity insert(HoldingEntity holding);
+    int insert(HoldingEntity holding);
 }

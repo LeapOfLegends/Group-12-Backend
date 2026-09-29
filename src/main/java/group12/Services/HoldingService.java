@@ -9,14 +9,11 @@ import group12.Entities.HoldingEntity;
 import group12.Repository.HoldingRepository;
 import group12.Repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HoldingService {
