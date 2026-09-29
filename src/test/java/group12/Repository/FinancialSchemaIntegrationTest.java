@@ -2,6 +2,8 @@ package group12.Repository;
 
 import group12.Entities.HoldingEntity;
 import group12.Entities.InstrumentEntity;
+import group12.marketdata.MarketSnapshot;
+import group12.marketdata.MarketSnapshotPersistenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -57,6 +59,9 @@ class FinancialSchemaIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private MarketSnapshotPersistenceService marketSnapshotPersistenceService;
 
     private Long clientId;
     private Long instrumentId;
@@ -241,6 +246,30 @@ class FinancialSchemaIntegrationTest {
                 new BigDecimal("1.05000000"),
                 observedAt
         ));
+    }
+
+    @Test
+    void marketSnapshotPersistence_rollsBackQuoteWhenTradeWriteFails() {
+        OffsetDateTime observedAt = OffsetDateTime.parse("2026-09-29T15:00:00Z");
+        MarketSnapshot snapshot = new MarketSnapshot(
+                new BigDecimal("10.00000000"),
+                new BigDecimal("10.10000000"),
+                new BigDecimal("-1.00000000"),
+                observedAt,
+                observedAt
+        );
+
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> marketSnapshotPersistenceService.persist(instrumentId, snapshot)
+        );
+
+        InstrumentEntity persisted = instrumentRepository.findById(instrumentId).orElseThrow();
+        assertNull(persisted.getBidPrice());
+        assertNull(persisted.getAskPrice());
+        assertNull(persisted.getQuoteAsOf());
+        assertNull(persisted.getLastPrice());
+        assertNull(persisted.getLastTradeAsOf());
     }
 
     @ParameterizedTest(name = "{0} rejects {1}")
