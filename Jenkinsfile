@@ -2,15 +2,53 @@ pipeline {
     agent any
 
     environment {
-        JAVA_HOME = '/usr/lib/jvm/java-25-amazon-corretto'
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
-    }
+    JAVA_HOME = '/usr/lib/jvm/java-25-amazon-corretto'
+    PATH = "${JAVA_HOME}/bin:${env.PATH}"
 
-    stages {
-        stage('Checkout') {
+    GITHUB_REPO_URL = 'https://github.com/berribitz/Group-12-Backend.git'
+    }
+stages{
+   stage('Checkout') {
     steps {
         checkout scm
         sh 'git log --oneline -1'
+
+        script {
+            env.GIT_COMMIT_SHA = sh(
+                script: 'git rev-parse HEAD',
+                returnStdout: true
+            ).trim()
+
+            echo "Building commit: ${env.GIT_COMMIT_SHA}"
+
+            step([
+                $class: 'GitHubCommitStatusSetter',
+
+                reposSource: [
+                    $class: 'ManuallyEnteredRepositorySource',
+                    url: env.GITHUB_REPO_URL
+                ],
+
+                commitShaSource: [
+                    $class: 'ManuallyEnteredShaSource',
+                    sha: env.GIT_COMMIT_SHA
+                ],
+
+                contextSource: [
+                    $class: 'ManuallyEnteredCommitContextSource',
+                    context: 'Jenkins'
+                ],
+
+                statusResultSource: [
+                    $class: 'ConditionalStatusResultSource',
+                    results: [[
+                        $class: 'AnyBuildResult',
+                        state: 'PENDING',
+                        message: 'Jenkins build is running'
+                    ]]
+                ]
+            ])
+        }
     }
 }
         
@@ -60,9 +98,74 @@ pipeline {
     }
 
     post {
-        always {
-            junit testResults: '**/target/surefire-reports/*.xml',
-                  allowEmptyResults: true
+
+    success {
+        script {
+            step([
+                $class: 'GitHubCommitStatusSetter',
+
+                reposSource: [
+                    $class: 'ManuallyEnteredRepositorySource',
+                    url: env.GITHUB_REPO_URL
+                ],
+
+                commitShaSource: [
+                    $class: 'ManuallyEnteredShaSource',
+                    sha: env.GIT_COMMIT_SHA
+                ],
+
+                contextSource: [
+                    $class: 'ManuallyEnteredCommitContextSource',
+                    context: 'Jenkins'
+                ],
+
+                statusResultSource: [
+                    $class: 'ConditionalStatusResultSource',
+                    results: [[
+                        $class: 'AnyBuildResult',
+                        state: 'SUCCESS',
+                        message: 'Jenkins build passed'
+                    ]]
+                ]
+            ])
         }
     }
+
+    failure {
+        script {
+            step([
+                $class: 'GitHubCommitStatusSetter',
+
+                reposSource: [
+                    $class: 'ManuallyEnteredRepositorySource',
+                    url: env.GITHUB_REPO_URL
+                ],
+
+                commitShaSource: [
+                    $class: 'ManuallyEnteredShaSource',
+                    sha: env.GIT_COMMIT_SHA
+                ],
+
+                contextSource: [
+                    $class: 'ManuallyEnteredCommitContextSource',
+                    context: 'Jenkins'
+                ],
+
+                statusResultSource: [
+                    $class: 'ConditionalStatusResultSource',
+                    results: [[
+                        $class: 'AnyBuildResult',
+                        state: 'FAILURE',
+                        message: 'Jenkins build failed'
+                    ]]
+                ]
+            ])
+        }
+    }
+
+    always {
+        junit testResults: '**/target/surefire-reports/*.xml',
+              allowEmptyResults: true
+    }
+}
 }
