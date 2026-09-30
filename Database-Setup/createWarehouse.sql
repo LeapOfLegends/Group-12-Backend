@@ -1,3 +1,5 @@
+CREATE DATABASE IF NOT EXISTS data_warehouse;
+
 CREATE SCHEMA IF NOT EXISTS dw;
 
 CREATE TABLE IF NOT EXISTS dw.table_records (
@@ -10,7 +12,9 @@ CREATE TABLE IF NOT EXISTS dw.table_records (
 	asset_class VARCHAR(100) NOT NULL,
 	currency VARCHAR(3) NOT NULL,
 	is_tradable BOOLEAN NOT NULL,
-	instrument_price NUMERIC(14, 4) NOT NULL,
+	instrument_last_price NUMERIC(20, 8) NOT NULL,
+	instrument_ask_price NUMERIC(20, 8),
+	instrument_bid_price NUMERIC (20, 8),
 	account_balance NUMERIC(14, 4) NOT NULL,
 	created_at TIMESTAMP NOT NULL,
 	order_type TEXT NOT NULL,
@@ -40,7 +44,7 @@ CREATE TABLE IF NOT EXISTS dw.etl_watermark (
 	pipeline_name VARCHAR(100) PRIMARY KEY,
 	last_filled_at TIMESTAMPTZ NOT NULL, 
 	last_fill_id BIGINT,
-	updated_at TIMESTAMPTTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 
