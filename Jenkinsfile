@@ -66,21 +66,14 @@ stages{
 
         stage('Build') {
             steps {
-                //sh 'mvn clean package -DskipTests'
-                sh 'mvn test verify'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh 'mvn test'
+                sh 'mvn clean package'
             }
         }
 
         stage('Docker Build') {
     steps {
         sh 'docker build -t capstone-backend:${BUILD_NUMBER} .'
-        sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:latest'
+        sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:0.1.0'
         }
     }
     stage('Deploy to VM') {
@@ -91,7 +84,7 @@ stages{
                 sh '''
                     docker stop capstone-backend || true
                     docker rm capstone-backend || true
-                    docker run -d --name capstone-backend -p 8080:8080 capstone-backend:latest
+                    docker run -d --name capstone-backend -p 8080:8081 capstone-backend:0.1.0
                 '''
             }
         }
