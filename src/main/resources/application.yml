@@ -16,7 +16,11 @@ server:
         include-message: always
 
 logging:
+    file:
+        name: logs/group-12-backend.log
     level:
+        root: INFO
+        group12: INFO
         org.mybatis: DEBUG
         org.springframework.jdbc: DEBUG
 
