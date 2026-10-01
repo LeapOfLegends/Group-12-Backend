@@ -31,9 +31,59 @@ alpaca:
     feed: ${ALPACA_MARKET_DATA_FEED:iex}
     connect-timeout: ${ALPACA_CONNECT_TIMEOUT:2s}
     read-timeout: ${ALPACA_READ_TIMEOUT:5s}
-    supported-us-equity-symbols: ${ALPACA_SUPPORTED_US_EQUITY_SYMBOLS:}
+    supported-us-equity-symbols:
+        - NVDA
+        - AAPL
+        - MSFT
+        - AMZN
+        - GOOGL
+        - GOOG
+        - META
+        - AVGO
+        - TSLA
+        - MU
+        - BRK.B
+        - LLY
+        - AMD
+        - JPM
+        - WMT
+        - V
+        - XOM
+        - INTC
+        - JNJ
+        - MA
+        - ABBV
+        - PLTR
+        - CSCO
+        - LRCX
+        - AMAT
+        - ORCL
+        - COST
+        - CVX
+        - CAT
+        - BAC
+        - KO
+        - MRK
+        - DELL
+        - PG
+        - UNH
+        - GE
+        - PANW
+        - MS
+        - PM
+        - NFLX
+        - HD
+        - CRWD
+        - SNDK
+        - KLAC
+        - GS
+        - GEV
+        - ANET
+        - TXN
+        - RTX
+        - TMO
 
 market-data:
     refresh:
-        enabled: ${MARKET_DATA_REFRESH_ENABLED:false}
+        enabled: ${MARKET_DATA_REFRESH_ENABLED:true}
         interval: ${MARKET_DATA_REFRESH_INTERVAL:5s}
