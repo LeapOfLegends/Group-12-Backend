@@ -81,6 +81,7 @@ public interface HoldingRepository {
             @Param("averageCost") BigDecimal averageCost
     );
 
+
     @Select("""
         SELECT
             holding_id,

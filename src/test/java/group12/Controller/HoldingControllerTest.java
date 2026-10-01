@@ -60,8 +60,7 @@ public class HoldingControllerTest {
     @Test
     void getInstrumentHoldings_shouldReturn200AndHoldings() {
         HoldingEntity holding = holding(10L, 1L, 25L, new BigDecimal("5.125"));
-        when(holdingService.getHoldingByInstrumentIdAndClientId(25L, 1L))
-                .thenReturn(Optional.of(holding));
+        when(holdingService.getHoldingByInstrumentIdAndClientId(25L, 1L)).thenReturn(Optional.of(holding));
 
         ResponseEntity<Optional<HoldingEntity>> response = holdingController.getInstrumentHoldings(25L, 1L);
 
@@ -72,30 +71,17 @@ public class HoldingControllerTest {
 
     @Test
     void updateHolding_shouldReturn200AndUpdatedHolding() {
-        BigDecimal quantity = new BigDecimal("8.12500000");
-        HoldingEntity updated = holding(10L, 1L, 25L, quantity);
+        HoldingEntity updated = holding(10L, 1L, 25L, new BigDecimal("8"));
         updated.setAverageCost(new BigDecimal("125.50"));
-        HoldingUpdateRequest request = new HoldingUpdateRequest(
-                quantity,
-                new BigDecimal("125.50")
-        );
-        when(holdingService.updateHolding(
-                25L,
-                1L,
-                quantity,
-                new BigDecimal("125.50")
-        )).thenReturn(updated);
+        HoldingUpdateRequest request = new HoldingUpdateRequest(new BigDecimal("8"), new BigDecimal("125.50"));
+        when(holdingService.updateHolding(25L, 1L, new BigDecimal("8"), new BigDecimal("125.50"))).thenReturn(updated);
+
 
         ResponseEntity<HoldingEntity> response = holdingController.updateHolding(25L, 1L, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(updated, response.getBody());
-        verify(holdingService).updateHolding(
-                25L,
-                1L,
-                quantity,
-                new BigDecimal("125.50")
-        );
+        verify(holdingService).updateHolding(25L, 1L, new BigDecimal("8"), new BigDecimal("125.50"));
     }
 
     @Test
