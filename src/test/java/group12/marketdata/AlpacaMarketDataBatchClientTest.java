@@ -1,6 +1,5 @@
 package group12.marketdata;
 
-import group12.Entities.InstrumentEntity;
 import group12.marketdata.exception.MarketDataProviderException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -137,9 +136,8 @@ class AlpacaMarketDataBatchClientTest {
     }
 
     @Test
-    void batchRequestRejectsNonTradableInstrumentWithoutHttp() {
-        InstrumentEntity instrument = instrument("AAPL");
-        instrument.setTradable(false);
+    void batchRequestRejectsUnsupportedInstrumentWithoutHttp() {
+        MarketDataRequest instrument = new MarketDataRequest("AAPL", "Crypto", "USD");
 
         assertThrows(
                 MarketDataProviderException.class,
@@ -148,14 +146,7 @@ class AlpacaMarketDataBatchClientTest {
         server.verify();
     }
 
-    private InstrumentEntity instrument(String symbol) {
-        InstrumentEntity instrument = new InstrumentEntity();
-        instrument.setInstrumentId(1L);
-        instrument.setSymbol(symbol);
-        instrument.setInstrumentName(symbol);
-        instrument.setAssetClass("Equity");
-        instrument.setCurrency("USD");
-        instrument.setTradable(true);
-        return instrument;
+    private MarketDataRequest instrument(String symbol) {
+        return new MarketDataRequest(symbol, "Equity", "USD");
     }
 }

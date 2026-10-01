@@ -1,6 +1,5 @@
 package group12.marketdata;
 
-import group12.Entities.InstrumentEntity;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.web.client.RestClient;
@@ -55,15 +54,8 @@ class AlpacaLiveSmokeTest {
         return properties;
     }
 
-    private InstrumentEntity aapl() {
-        InstrumentEntity instrument = new InstrumentEntity();
-        instrument.setInstrumentId(1L);
-        instrument.setSymbol("AAPL");
-        instrument.setInstrumentName("Apple Inc.");
-        instrument.setAssetClass("Equity");
-        instrument.setCurrency("USD");
-        instrument.setTradable(true);
-        return instrument;
+    private MarketDataRequest aapl() {
+        return new MarketDataRequest("AAPL", "Equity", "USD");
     }
 
     private void assertPositive(BigDecimal value) {

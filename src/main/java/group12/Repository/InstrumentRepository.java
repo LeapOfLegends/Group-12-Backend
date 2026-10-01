@@ -28,6 +28,16 @@ public interface InstrumentRepository {
                currency, is_tradable AS tradable, bid_price, ask_price, last_price,
                quote_as_of, last_trade_as_of
         FROM instruments
+        WHERE is_tradable = TRUE
+        ORDER BY symbol, instrument_id
+        """)
+    List<InstrumentEntity> findTradableInstruments();
+
+    @Select("""
+        SELECT instrument_id, symbol, instrument_name, asset_class,
+               currency, is_tradable AS tradable, bid_price, ask_price, last_price,
+               quote_as_of, last_trade_as_of
+        FROM instruments
         WHERE instrument_id = #{instrumentId}
         """)
     Optional<InstrumentEntity> findById(@Param("instrumentId") Long instrumentId);
@@ -40,18 +50,6 @@ public interface InstrumentRepository {
         WHERE symbol = #{symbol}
         """)
     Optional<InstrumentEntity> findBySymbol(@Param("symbol") String symbol);
-
-    @Select("""
-        SELECT instrument_id, symbol, instrument_name, asset_class,
-               currency, is_tradable AS tradable, bid_price, ask_price, last_price,
-               quote_as_of, last_trade_as_of
-        FROM instruments
-        WHERE is_tradable = TRUE
-          AND UPPER(asset_class) = 'EQUITY'
-          AND UPPER(currency) = 'USD'
-        ORDER BY symbol, instrument_id
-        """)
-    List<InstrumentEntity> findTradableUsdEquities();
 
     @Update("""
         UPDATE instruments

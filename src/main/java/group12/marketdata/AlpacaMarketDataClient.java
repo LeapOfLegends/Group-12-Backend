@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import group12.Entities.InstrumentEntity;
 import group12.marketdata.exception.MarketDataConfigurationException;
 import group12.marketdata.exception.MarketDataException;
 import group12.marketdata.exception.MarketDataProviderException;
@@ -24,10 +23,10 @@ import java.net.SocketTimeoutException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
-import java.util.LinkedHashSet;
-import java.util.Locale;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
@@ -57,8 +56,20 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
     }
 
     @Override
+    public boolean supports(MarketDataRequest instrument) {
+        if (instrument == null) {
+            return false;
+        }
+        String symbol = normalizeSymbol(instrument.symbol());
+        return !symbol.isBlank()
+                && "Equity".equalsIgnoreCase(instrument.assetClass())
+                && "USD".equalsIgnoreCase(instrument.currency())
+                && properties.getSupportedUsEquitySymbols().contains(symbol);
+    }
+
+    @Override
     public Map<String, MarketSnapshot> getCurrentMarketSnapshots(
-            Collection<InstrumentEntity> instruments
+            Collection<MarketDataRequest> instruments
     ) {
         if (instruments == null || instruments.isEmpty()) {
             return Map.of();
@@ -144,18 +155,9 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
                 : new MarketDataProviderException(message, cause);
     }
 
-    private String validateInstrument(InstrumentEntity instrument) {
-        String symbol = instrument == null || instrument.getSymbol() == null
-                ? ""
-                : instrument.getSymbol().trim().toUpperCase(Locale.ROOT);
-        boolean supportedType = instrument != null
-                && instrument.isTradable()
-                && "Equity".equalsIgnoreCase(instrument.getAssetClass())
-                && "USD".equalsIgnoreCase(instrument.getCurrency());
-
-        if (symbol.isBlank()
-                || !supportedType
-                || !properties.getSupportedUsEquitySymbols().contains(symbol)) {
+    private String validateInstrument(MarketDataRequest instrument) {
+        String symbol = instrument == null ? "" : normalizeSymbol(instrument.symbol());
+        if (!supports(instrument)) {
             throw new MarketDataProviderException(
                     "Instrument is not supported by the configured US equity market-data feed: "
                             + (symbol.isBlank() ? "<missing>" : symbol)

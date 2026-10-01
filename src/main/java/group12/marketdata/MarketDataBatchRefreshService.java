@@ -2,7 +2,6 @@ package group12.marketdata;
 
 import group12.Entities.InstrumentEntity;
 import group12.Repository.InstrumentRepository;
-import group12.marketdata.exception.MarketDataConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -13,13 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 @Service
 public class MarketDataBatchRefreshService {
-
-    static final int MAX_BATCH_SYMBOLS = 50;
 
     private static final Logger LOGGER =
             LoggerFactory.getLogger(MarketDataBatchRefreshService.class);
@@ -27,54 +23,43 @@ public class MarketDataBatchRefreshService {
     private final InstrumentRepository instrumentRepository;
     private final MarketDataProvider marketDataProvider;
     private final MarketSnapshotPersistenceService persistenceService;
-    private final AlpacaProperties alpacaProperties;
 
     public MarketDataBatchRefreshService(
             InstrumentRepository instrumentRepository,
             MarketDataProvider marketDataProvider,
-            MarketSnapshotPersistenceService persistenceService,
-            AlpacaProperties alpacaProperties
+            MarketSnapshotPersistenceService persistenceService
     ) {
         this.instrumentRepository = instrumentRepository;
         this.marketDataProvider = marketDataProvider;
         this.persistenceService = persistenceService;
-        this.alpacaProperties = alpacaProperties;
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public int refreshEligibleInstruments() {
-        Set<String> allowlist = alpacaProperties.getSupportedUsEquitySymbols();
-        if (allowlist.size() > MAX_BATCH_SYMBOLS) {
-            throw new MarketDataConfigurationException(
-                    "At most 50 US equity symbols may be configured for batch refresh"
-            );
-        }
-
         Map<String, List<InstrumentEntity>> instrumentsBySymbol = new TreeMap<>();
-        for (InstrumentEntity instrument : instrumentRepository.findTradableUsdEquities()) {
-            if (!isEligible(instrument, allowlist)) {
+        Map<String, MarketDataRequest> requestsBySymbol = new TreeMap<>();
+        for (InstrumentEntity instrument : instrumentRepository.findTradableInstruments()) {
+            if (instrument == null || !instrument.isTradable()) {
                 continue;
             }
-            String symbol = normalizeSymbol(instrument.getSymbol());
+
+            MarketDataRequest request = toMarketDataRequest(instrument);
+            if (!marketDataProvider.supports(request)) {
+                continue;
+            }
+
+            String symbol = normalizeSymbol(request.symbol());
             instrumentsBySymbol
                     .computeIfAbsent(symbol, ignored -> new ArrayList<>())
                     .add(instrument);
-        }
-
-        if (instrumentsBySymbol.size() > MAX_BATCH_SYMBOLS) {
-            throw new MarketDataConfigurationException(
-                    "More than 50 eligible US equity symbols were found for batch refresh"
-            );
+            requestsBySymbol.putIfAbsent(symbol, request);
         }
         if (instrumentsBySymbol.isEmpty()) {
             return 0;
         }
 
-        List<InstrumentEntity> uniqueInstruments = instrumentsBySymbol.values().stream()
-                .map(List::getFirst)
-                .toList();
         Map<String, MarketSnapshot> snapshots =
-                marketDataProvider.getCurrentMarketSnapshots(uniqueInstruments);
+                marketDataProvider.getCurrentMarketSnapshots(requestsBySymbol.values());
 
         int persistedInstruments = 0;
         for (Map.Entry<String, MarketSnapshot> entry : snapshots.entrySet()) {
@@ -104,14 +89,12 @@ public class MarketDataBatchRefreshService {
         return persistedInstruments;
     }
 
-    private boolean isEligible(InstrumentEntity instrument, Set<String> allowlist) {
-        if (instrument == null || instrument.getSymbol() == null) {
-            return false;
-        }
-        return instrument.isTradable()
-                && "Equity".equalsIgnoreCase(instrument.getAssetClass())
-                && "USD".equalsIgnoreCase(instrument.getCurrency())
-                && allowlist.contains(normalizeSymbol(instrument.getSymbol()));
+    private MarketDataRequest toMarketDataRequest(InstrumentEntity instrument) {
+        return new MarketDataRequest(
+                instrument.getSymbol(),
+                instrument.getAssetClass(),
+                instrument.getCurrency()
+        );
     }
 
     private String normalizeSymbol(String symbol) {

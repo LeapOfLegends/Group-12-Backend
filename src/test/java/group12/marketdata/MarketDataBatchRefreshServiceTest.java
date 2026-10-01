@@ -2,7 +2,6 @@ package group12.marketdata;
 
 import group12.Entities.InstrumentEntity;
 import group12.Repository.InstrumentRepository;
-import group12.marketdata.exception.MarketDataConfigurationException;
 import group12.marketdata.exception.MarketDataProviderException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,11 +14,10 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.LinkedHashSet;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,33 +44,38 @@ class MarketDataBatchRefreshServiceTest {
     @Mock
     private MarketSnapshotPersistenceService persistenceService;
 
-    private AlpacaProperties properties;
     private MarketDataBatchRefreshService service;
 
     @BeforeEach
     void setUp() {
-        properties = new AlpacaProperties();
-        properties.setSupportedUsEquitySymbols(
-                Set.of("AAPL", "MSFT", "TSLA", "GBPUSD")
-        );
         service = new MarketDataBatchRefreshService(
                 instrumentRepository,
                 marketDataProvider,
-                persistenceService,
-                properties
+                persistenceService
         );
     }
 
     @Test
-    void sendsOnlyTradableAllowlistedUsdEquitiesInOneBatchCall() {
-        InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
+    void hasNoAlpacaPropertiesDependency() {
+        assertTrue(Arrays.stream(MarketDataBatchRefreshService.class.getDeclaredFields())
+                .noneMatch(field -> field.getType().equals(AlpacaProperties.class)));
+        assertTrue(Arrays.stream(MarketDataBatchRefreshService.class.getConstructors())
+                .flatMap(constructor -> Arrays.stream(constructor.getParameterTypes()))
+                .noneMatch(type -> type.equals(AlpacaProperties.class)));
+    }
+
+    @Test
+    void sendsOnlyProviderSupportedTradableRequestsInOneBatchCall() {
+        InstrumentEntity aapl = instrument(1L, " aapl ", true, "Equity", "USD");
         InstrumentEntity nonTradable = instrument(2L, "MSFT", false, "Equity", "USD");
         InstrumentEntity fx = instrument(3L, "GBPUSD", true, "FX", "USD");
         InstrumentEntity nonUsd = instrument(4L, "TSLA", true, "Equity", "GBP");
-        InstrumentEntity outsideAllowlist = instrument(5L, "NVDA", true, "Equity", "USD");
-        when(instrumentRepository.findTradableUsdEquities()).thenReturn(
-                List.of(aapl, nonTradable, fx, nonUsd, outsideAllowlist)
+        InstrumentEntity unsupported = instrument(5L, "NVDA", true, "Equity", "USD");
+        when(instrumentRepository.findTradableInstruments()).thenReturn(
+                List.of(aapl, nonTradable, fx, nonUsd, unsupported)
         );
+        MarketDataRequest aaplRequest = new MarketDataRequest(" aapl ", "Equity", "USD");
+        when(marketDataProvider.supports(aaplRequest)).thenReturn(true);
         MarketSnapshot snapshot = snapshot();
         when(marketDataProvider.getCurrentMarketSnapshots(any()))
                 .thenReturn(Map.of("AAPL", snapshot));
@@ -81,17 +84,22 @@ class MarketDataBatchRefreshServiceTest {
         assertEquals(1, service.refreshEligibleInstruments());
 
         @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<InstrumentEntity>> captor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<Collection<MarketDataRequest>> captor =
+                ArgumentCaptor.forClass(Collection.class);
         verify(marketDataProvider).getCurrentMarketSnapshots(captor.capture());
-        assertEquals(List.of("AAPL"), captor.getValue().stream()
-                .map(InstrumentEntity::getSymbol)
-                .toList());
+        assertEquals(List.of(aaplRequest), List.copyOf(captor.getValue()));
+        verify(marketDataProvider).supports(new MarketDataRequest("GBPUSD", "FX", "USD"));
+        verify(marketDataProvider).supports(new MarketDataRequest("TSLA", "Equity", "GBP"));
+        verify(marketDataProvider).supports(new MarketDataRequest("NVDA", "Equity", "USD"));
+        verify(marketDataProvider, never()).supports(
+                new MarketDataRequest("MSFT", "Equity", "USD")
+        );
         verify(persistenceService).persist(1L, snapshot);
     }
 
     @Test
-    void emptyEligibleSetSendsNoHttpRequest() {
-        when(instrumentRepository.findTradableUsdEquities()).thenReturn(List.of());
+    void emptyEligibleSetSendsNoProviderRequest() {
+        when(instrumentRepository.findTradableInstruments()).thenReturn(List.of());
 
         assertEquals(0, service.refreshEligibleInstruments());
 
@@ -100,26 +108,11 @@ class MarketDataBatchRefreshServiceTest {
     }
 
     @Test
-    void moreThanFiftyConfiguredSymbolsSkipsCycle() {
-        Set<String> symbols = IntStream.rangeClosed(1, 51)
-                .mapToObj(number -> "SYM" + number)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        properties.setSupportedUsEquitySymbols(symbols);
-
-        assertThrows(
-                MarketDataConfigurationException.class,
-                () -> service.refreshEligibleInstruments()
-        );
-
-        verify(instrumentRepository, never()).findTradableUsdEquities();
-        verify(marketDataProvider, never()).getCurrentMarketSnapshots(any());
-    }
-
-    @Test
     void missingAndUnknownResponseSymbolsAreNotPersisted() {
         InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
         InstrumentEntity msft = instrument(2L, "MSFT", true, "Equity", "USD");
-        when(instrumentRepository.findTradableUsdEquities()).thenReturn(List.of(aapl, msft));
+        when(instrumentRepository.findTradableInstruments()).thenReturn(List.of(aapl, msft));
+        support(aapl, msft);
         MarketSnapshot snapshot = snapshot();
         when(marketDataProvider.getCurrentMarketSnapshots(any()))
                 .thenReturn(Map.of("AAPL", snapshot, "UNKNOWN", snapshot));
@@ -133,9 +126,9 @@ class MarketDataBatchRefreshServiceTest {
 
     @Test
     void providerFailurePreservesAllCachedValues() {
-        when(instrumentRepository.findTradableUsdEquities()).thenReturn(
-                List.of(instrument(1L, "AAPL", true, "Equity", "USD"))
-        );
+        InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
+        when(instrumentRepository.findTradableInstruments()).thenReturn(List.of(aapl));
+        support(aapl);
         when(marketDataProvider.getCurrentMarketSnapshots(any()))
                 .thenThrow(new MarketDataProviderException("provider failed"));
 
@@ -150,7 +143,8 @@ class MarketDataBatchRefreshServiceTest {
     @Test
     void unchangedSnapshotIsNotCountedOrWarned(CapturedOutput output) {
         InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
-        when(instrumentRepository.findTradableUsdEquities()).thenReturn(List.of(aapl));
+        when(instrumentRepository.findTradableInstruments()).thenReturn(List.of(aapl));
+        support(aapl);
         MarketSnapshot snapshot = snapshot();
         when(marketDataProvider.getCurrentMarketSnapshots(any()))
                 .thenReturn(Map.of("AAPL", snapshot));
@@ -164,7 +158,8 @@ class MarketDataBatchRefreshServiceTest {
     void persistenceFailureForOneInstrumentDoesNotStopAnother(CapturedOutput output) {
         InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
         InstrumentEntity msft = instrument(2L, "MSFT", true, "Equity", "USD");
-        when(instrumentRepository.findTradableUsdEquities()).thenReturn(List.of(aapl, msft));
+        when(instrumentRepository.findTradableInstruments()).thenReturn(List.of(aapl, msft));
+        support(aapl, msft);
         MarketSnapshot snapshot = snapshot();
         when(marketDataProvider.getCurrentMarketSnapshots(any()))
                 .thenReturn(Map.of("AAPL", snapshot, "MSFT", snapshot));
@@ -178,6 +173,16 @@ class MarketDataBatchRefreshServiceTest {
         verify(persistenceService).persist(2L, snapshot);
         assertTrue(output.getOut().contains("instrument 1 (AAPL)"));
         assertTrue(output.getOut().contains("IllegalStateException: database failure"));
+    }
+
+    private void support(InstrumentEntity... instruments) {
+        for (InstrumentEntity instrument : instruments) {
+            when(marketDataProvider.supports(new MarketDataRequest(
+                    instrument.getSymbol(),
+                    instrument.getAssetClass(),
+                    instrument.getCurrency()
+            ))).thenReturn(true);
+        }
     }
 
     private InstrumentEntity instrument(

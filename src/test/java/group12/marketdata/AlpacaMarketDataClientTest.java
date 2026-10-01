@@ -1,6 +1,5 @@
 package group12.marketdata;
 
-import group12.Entities.InstrumentEntity;
 import group12.marketdata.exception.MarketDataConfigurationException;
 import group12.marketdata.exception.MarketDataProviderException;
 import group12.marketdata.exception.MarketDataRateLimitException;
@@ -16,8 +15,11 @@ import org.springframework.web.client.RestClient;
 import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.IntStream;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withException;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
@@ -97,13 +99,37 @@ class AlpacaMarketDataClientTest {
     @Test
     void nonEquityOrNonUsdInstrumentIsRejectedEvenIfItsSymbolIsConfigured() {
         properties.setSupportedUsEquitySymbols(Set.of("AAPL", "GBPUSD"));
-        InstrumentEntity instrument = instrument("GBPUSD");
-        instrument.setAssetClass("FX");
-        instrument.setCurrency("GBP");
+        MarketDataRequest instrument = new MarketDataRequest("GBPUSD", "FX", "GBP");
 
         assertThrows(
                 MarketDataProviderException.class,
                 () -> client.getCurrentMarketSnapshots(List.of(instrument))
+        );
+        server.verify();
+    }
+
+    @Test
+    void supportIsDeterminedFromProviderNeutralAttributesAndAlpacaAllowlist() {
+        assertTrue(client.supports(instrument(" aapl ")));
+        assertFalse(client.supports(instrument("MSFT")));
+        assertFalse(client.supports(new MarketDataRequest("AAPL", "Crypto", "USD")));
+        assertFalse(client.supports(new MarketDataRequest("AAPL", "Equity", "GBP")));
+        assertFalse(client.supports(null));
+    }
+
+    @Test
+    void providerEnforcesItsFiftySymbolBatchLimitWithoutHttpRequest() {
+        Set<String> symbols = IntStream.rangeClosed(1, 51)
+                .mapToObj(number -> "SYM" + number)
+                .collect(java.util.stream.Collectors.toSet());
+        properties.setSupportedUsEquitySymbols(symbols);
+        List<MarketDataRequest> requests = symbols.stream()
+                .map(this::instrument)
+                .toList();
+
+        assertThrows(
+                MarketDataConfigurationException.class,
+                () -> client.getCurrentMarketSnapshots(requests)
         );
         server.verify();
     }
@@ -121,14 +147,7 @@ class AlpacaMarketDataClientTest {
         client.getCurrentMarketSnapshots(List.of(instrument("AAPL")));
     }
 
-    private InstrumentEntity instrument(String symbol) {
-        InstrumentEntity instrument = new InstrumentEntity();
-        instrument.setInstrumentId(1L);
-        instrument.setSymbol(symbol);
-        instrument.setInstrumentName(symbol);
-        instrument.setAssetClass("Equity");
-        instrument.setCurrency("USD");
-        instrument.setTradable(true);
-        return instrument;
+    private MarketDataRequest instrument(String symbol) {
+        return new MarketDataRequest(symbol, "Equity", "USD");
     }
 }
