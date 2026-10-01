@@ -15,7 +15,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.OffsetDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,7 +54,7 @@ class MarketDataLiveRefreshTest {
     private InstrumentRepository instrumentRepository;
 
     @Autowired
-    private MarketDataRefreshService refreshService;
+    private MarketDataBatchRefreshService batchRefreshService;
 
     @Autowired
     private MarketSnapshotPersistenceService persistenceService;
@@ -85,36 +84,34 @@ class MarketDataLiveRefreshTest {
         assertNull(initial.getQuoteAsOf());
         assertNull(initial.getLastTradeAsOf());
 
-        MarketSnapshot snapshot = refreshService.refreshInstrument(instrumentId);
+        assertEquals(1, batchRefreshService.refreshEligibleInstruments());
 
-        assertTrue(snapshot.hasQuote() || snapshot.hasLastTrade());
         InstrumentEntity persisted = instrumentRepository.findById(instrumentId).orElseThrow();
-        assertLiveGroupsWerePersisted(snapshot, persisted);
+        assertLiveGroupsWerePersisted(persisted);
         verifyAbsentGroupsPreserveExistingValues();
     }
 
-    private void assertLiveGroupsWerePersisted(
-            MarketSnapshot snapshot,
-            InstrumentEntity persisted
-    ) {
-        if (snapshot.hasQuote()) {
-            assertDatabasePrice(snapshot.bidPrice(), persisted.getBidPrice());
-            assertDatabasePrice(snapshot.askPrice(), persisted.getAskPrice());
+    private void assertLiveGroupsWerePersisted(InstrumentEntity persisted) {
+        boolean hasQuote = persisted.getBidPrice() != null
+                && persisted.getAskPrice() != null
+                && persisted.getQuoteAsOf() != null;
+        boolean hasTrade = persisted.getLastPrice() != null
+                && persisted.getLastTradeAsOf() != null;
+        assertTrue(hasQuote || hasTrade);
+
+        if (hasQuote) {
+            assertPositiveDatabasePrice(persisted.getBidPrice());
+            assertPositiveDatabasePrice(persisted.getAskPrice());
             assertNotNull(persisted.getQuoteAsOf());
-            assertEquals(snapshot.quoteAsOf().toInstant(), persisted.getQuoteAsOf().toInstant());
         } else {
             assertNull(persisted.getBidPrice());
             assertNull(persisted.getAskPrice());
             assertNull(persisted.getQuoteAsOf());
         }
 
-        if (snapshot.hasLastTrade()) {
-            assertDatabasePrice(snapshot.lastPrice(), persisted.getLastPrice());
+        if (hasTrade) {
+            assertPositiveDatabasePrice(persisted.getLastPrice());
             assertNotNull(persisted.getLastTradeAsOf());
-            assertEquals(
-                    snapshot.lastTradeAsOf().toInstant(),
-                    persisted.getLastTradeAsOf().toInstant()
-            );
         } else {
             assertNull(persisted.getLastPrice());
             assertNull(persisted.getLastTradeAsOf());
@@ -169,10 +166,9 @@ class MarketDataLiveRefreshTest {
         );
     }
 
-    private void assertDatabasePrice(BigDecimal providerPrice, BigDecimal databasePrice) {
+    private void assertPositiveDatabasePrice(BigDecimal databasePrice) {
         assertNotNull(databasePrice);
-        BigDecimal expected = providerPrice.setScale(8, RoundingMode.HALF_UP);
-        assertEquals(0, expected.compareTo(databasePrice));
+        assertTrue(databasePrice.signum() > 0);
     }
 
     private static String environmentVariable(String name) {

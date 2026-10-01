@@ -1,9 +1,12 @@
 package group12.marketdata;
 
 import group12.Entities.InstrumentEntity;
-import group12.marketdata.exception.UnsupportedInstrumentException;
+import group12.marketdata.exception.MarketDataProviderException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -25,6 +28,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+@ExtendWith(OutputCaptureExtension.class)
 class AlpacaMarketDataBatchClientTest {
 
     private static final String URL =
@@ -99,7 +103,9 @@ class AlpacaMarketDataBatchClientTest {
     }
 
     @Test
-    void unusableAndUnknownSymbolsDoNotDiscardValidRequestedSnapshots() {
+    void unusableAndUnknownSymbolsDoNotDiscardValidRequestedSnapshots(
+            CapturedOutput output
+    ) {
         server.expect(requestTo(URL)).andRespond(withSuccess("""
                 {
                   "AAPL": {
@@ -108,7 +114,8 @@ class AlpacaMarketDataBatchClientTest {
                   },
                   "MSFT": {
                     "latestQuote": {"bp": 0, "ap": 450.20,
-                                    "t": "2026-09-29T15:00:00Z"}
+                                    "t": "raw-provider-response-secret"},
+                    "providerSecret": "raw-provider-response-secret"
                   },
                   "UNKNOWN": {
                     "latestTrade": {"p": 10.00, "t": "2026-09-29T15:00:00Z"}
@@ -122,16 +129,21 @@ class AlpacaMarketDataBatchClientTest {
 
         assertEquals(Set.of("AAPL"), result.keySet());
         assertTrue(result.get("AAPL").hasQuote());
+        assertTrue(output.getAll().contains("symbol MSFT"));
+        assertTrue(output.getAll().contains("invalid quote"));
+        assertFalse(output.getAll().contains("test-api-key"));
+        assertFalse(output.getAll().contains("test-secret-key"));
+        assertFalse(output.getAll().contains("raw-provider-response-secret"));
     }
 
     @Test
-    void singleInstrumentRequestRejectsNonTradableInstrumentWithoutHttp() {
+    void batchRequestRejectsNonTradableInstrumentWithoutHttp() {
         InstrumentEntity instrument = instrument("AAPL");
         instrument.setTradable(false);
 
         assertThrows(
-                UnsupportedInstrumentException.class,
-                () -> client.getCurrentMarketSnapshot(instrument)
+                MarketDataProviderException.class,
+                () -> client.getCurrentMarketSnapshots(List.of(instrument))
         );
         server.verify();
     }

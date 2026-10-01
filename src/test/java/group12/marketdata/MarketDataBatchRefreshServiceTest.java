@@ -10,6 +10,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -20,7 +22,9 @@ import java.util.Set;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
@@ -30,6 +34,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
+@ExtendWith(OutputCaptureExtension.class)
 class MarketDataBatchRefreshServiceTest {
 
     @Mock
@@ -71,6 +76,7 @@ class MarketDataBatchRefreshServiceTest {
         MarketSnapshot snapshot = snapshot();
         when(marketDataProvider.getCurrentMarketSnapshots(any()))
                 .thenReturn(Map.of("AAPL", snapshot));
+        when(persistenceService.persist(1L, snapshot)).thenReturn(true);
 
         assertEquals(1, service.refreshEligibleInstruments());
 
@@ -117,6 +123,7 @@ class MarketDataBatchRefreshServiceTest {
         MarketSnapshot snapshot = snapshot();
         when(marketDataProvider.getCurrentMarketSnapshots(any()))
                 .thenReturn(Map.of("AAPL", snapshot, "UNKNOWN", snapshot));
+        when(persistenceService.persist(1L, snapshot)).thenReturn(true);
 
         assertEquals(1, service.refreshEligibleInstruments());
 
@@ -141,7 +148,20 @@ class MarketDataBatchRefreshServiceTest {
     }
 
     @Test
-    void persistenceFailureForOneInstrumentDoesNotStopAnother() {
+    void unchangedSnapshotIsNotCountedOrWarned(CapturedOutput output) {
+        InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
+        when(instrumentRepository.findTradableUsdEquities()).thenReturn(List.of(aapl));
+        MarketSnapshot snapshot = snapshot();
+        when(marketDataProvider.getCurrentMarketSnapshots(any()))
+                .thenReturn(Map.of("AAPL", snapshot));
+        when(persistenceService.persist(1L, snapshot)).thenReturn(false);
+
+        assertEquals(0, service.refreshEligibleInstruments());
+        assertFalse(output.getOut().contains("Could not persist market snapshot"));
+    }
+
+    @Test
+    void persistenceFailureForOneInstrumentDoesNotStopAnother(CapturedOutput output) {
         InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
         InstrumentEntity msft = instrument(2L, "MSFT", true, "Equity", "USD");
         when(instrumentRepository.findTradableUsdEquities()).thenReturn(List.of(aapl, msft));
@@ -150,11 +170,14 @@ class MarketDataBatchRefreshServiceTest {
                 .thenReturn(Map.of("AAPL", snapshot, "MSFT", snapshot));
         doThrow(new IllegalStateException("database failure"))
                 .when(persistenceService).persist(1L, snapshot);
+        when(persistenceService.persist(2L, snapshot)).thenReturn(true);
 
         assertEquals(1, service.refreshEligibleInstruments());
 
         verify(persistenceService).persist(1L, snapshot);
         verify(persistenceService).persist(2L, snapshot);
+        assertTrue(output.getOut().contains("instrument 1 (AAPL)"));
+        assertTrue(output.getOut().contains("IllegalStateException: database failure"));
     }
 
     private InstrumentEntity instrument(

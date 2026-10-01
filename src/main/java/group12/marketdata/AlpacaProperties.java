@@ -14,7 +14,6 @@ public class AlpacaProperties {
 
     private String apiKey = "";
     private String secretKey = "";
-    private URI tradeUrl = URI.create("https://paper-api.alpaca.markets");
     private URI dataUrl = URI.create("https://data.alpaca.markets");
     private String feed = "iex";
     private Duration connectTimeout = Duration.ofSeconds(2);
@@ -35,14 +34,6 @@ public class AlpacaProperties {
 
     public void setSecretKey(String secretKey) {
         this.secretKey = secretKey;
-    }
-
-    public URI getTradeUrl() {
-        return tradeUrl;
-    }
-
-    public void setTradeUrl(URI tradeUrl) {
-        this.tradeUrl = tradeUrl;
     }
 
     public URI getDataUrl() {

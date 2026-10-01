@@ -23,7 +23,6 @@ logging:
 alpaca:
     api-key: ${ALPACA_API_KEY:}
     secret-key: ${ALPACA_SECRET_KEY:}
-    trade-url: ${ALPACA_TRADE_URL:https://paper-api.alpaca.markets}
     data-url: ${ALPACA_MARKET_DATA_URL:https://data.alpaca.markets}
     feed: ${ALPACA_MARKET_DATA_FEED:iex}
     connect-timeout: ${ALPACA_CONNECT_TIMEOUT:2s}

@@ -4,11 +4,11 @@
 
 Alpaca provides external US stock-market data to Spring. Spring retrieves the latest prices and stores them on each instrument in PostgreSQL. The existing instrument API then reads those stored values so the frontend can display them without contacting Alpaca on every request.
 
-Cached prices let every user read the same data from PostgreSQL instead of causing another Alpaca request each time the instrument list is viewed. This prevents display traffic from consuming Alpaca's 200-request-per-minute allowance, while simulated order execution can still make a direct Alpaca call for the freshest available bid or ask.
+Cached prices let every user read the same data from PostgreSQL instead of causing another Alpaca request each time the instrument list is viewed. This prevents display traffic from consuming Alpaca's 200-request-per-minute allowance. Simulated order execution must also consume persisted market data and must never fetch directly from Alpaca.
 
-Spring uses Alpaca Paper Trading account credentials and the IEX market-data feed. The credentials authenticate our market-data requests, but Spring does not send client orders to Alpaca. Order handling remains part of Spring's own simulated trading system.
+Spring uses Alpaca credentials and the IEX market-data feed. The credentials authenticate market-data requests, but Spring does not send client orders to Alpaca. Order handling remains part of Spring's own simulated trading system.
 
-The code uses Alpaca's market-data URL, not its Paper Trading order URL. No current market-data class submits, changes, or cancels an Alpaca order.
+The application configures only Alpaca's market-data URL. No current market-data class submits, changes, or cancels an Alpaca order.
 
 ## 2. Prices and timestamps
 
@@ -28,7 +28,7 @@ For example, a stock could have a bid of `$99.90`, an ask of `$100.10`, and a la
 - SELL uses the latest bid price.
 - General instrument display can use the last traded price as an indicative value.
 
-These BUY and SELL rules are not connected to the current order workflow yet. The scheduled cache must not be treated automatically as an execution price.
+These BUY and SELL rules are not connected to the current order workflow yet. When that integration is added, it must validate and copy a qualifying persisted quote rather than request data from Alpaca during execution.
 
 The IEX feed does not represent trading on every US exchange. Its observations can therefore differ from a feed with full US market coverage.
 
@@ -142,7 +142,7 @@ The main responsibilities are:
 
 1. **Scheduler:** `MarketDataBatchScheduler` decides when a refresh cycle runs.
 2. **Refresh service:** `MarketDataBatchRefreshService` selects eligible instruments, makes one provider call, and coordinates persistence.
-3. **Provider boundary:** `MarketDataProvider` defines single-symbol and batch retrieval without exposing Alpaca-specific response classes.
+3. **Provider boundary:** `MarketDataProvider` defines batch retrieval without exposing Alpaca-specific response classes.
 4. **Alpaca client:** `AlpacaMarketDataClient` sends authenticated HTTP requests, maps JSON, validates prices and timestamps, and returns `MarketSnapshot` values.
 5. **Persistence service:** `MarketSnapshotPersistenceService.persist(...)` writes each instrument in its own database transaction after the network request has finished.
 6. **Repository:** `InstrumentRepository` contains the SQL that accepts only newer quote and trade observations for instruments that are still tradable.
@@ -188,26 +188,20 @@ last_trade_as_of IS NULL OR last_trade_as_of < incoming_last_trade_as_of
 
 Only a strictly newer observation replaces the stored group. An equal or older timestamp updates zero rows and leaves the newer cached value unchanged. This protects against duplicate observations and requests that finish out of order.
 
-## 8. On-demand data for simulated order execution
+## 8. Persisted data for simulated order execution
 
-Scheduled refresh and on-demand retrieval serve different purposes:
+Market-data ingestion and order execution are decoupled. Alpaca data enters the application only through scheduled batch ingestion and is stored on the instrument. Order execution must not call `AlpacaMarketDataClient`, `MarketDataProvider`, or the batch refresh service.
 
-| Scheduled batch refresh | On-demand single refresh |
-|---|---|
-| Keeps display data reasonably current | Intended to retrieve data when an order is being executed |
-| Uses one batch request for all eligible symbols | Uses one request for one instrument |
-| Runs only when the scheduler is enabled | Runs only when an internal caller invokes it |
-| Must not silently provide an execution price | Intended rule is BUY at ask and SELL at bid |
+The frozen US-equity execution contract is:
 
-`MarketDataRefreshService.refreshInstrument(Long instrumentId)` implements the single-instrument retrieval and persistence path. It calls `MarketDataProvider.getCurrentMarketSnapshot(...)`, which `AlpacaMarketDataClient` implements with:
+- BUY selects the persisted `ask_price`.
+- SELL selects the persisted `bid_price`.
+- `last_price` is display/market information and is not the default execution price.
+- A quote is executable only when `quote_as_of` is no more than 15 seconds old at validation time.
+- A quote older than 15 seconds may still be displayed, including with a delayed indicator, but must not be used for execution.
+- The selected bid or ask is copied into `orders.execution_price`, so later instrument updates cannot change the filled order's price.
 
-```http
-GET /v2/stocks/{symbol}/snapshot?feed=iex
-```
-
-This method is Spring-managed, but no production order service, controller, or scheduler currently calls it. BUY-at-ask and SELL-at-bid are therefore intended behavior, not completed order-execution behavior.
-
-Before connecting it to order execution, the team still needs rules for price freshness, market hours, and what happens when live market data is unavailable. Cached scheduled values should not be used as a silent fallback because they may be stale.
+The current branch has order submission and repository lifecycle operations, but it does not yet have an order-execution service that selects or fills an execution price. The rules above therefore remain an integration contract rather than implemented execution behavior.
 
 ## 9. Failure behavior
 
@@ -215,13 +209,13 @@ Before connecting it to order execution, the team still needs rules for price fr
 |---|---|
 | Credentials are missing | The request fails with a configuration exception before HTTP is sent |
 | Instrument is unsupported or non-tradable | The client rejects it before HTTP is sent |
-| Alpaca returns 401 or 403 | Authentication exception |
+| Alpaca returns 401 or 403 | Provider exception with a sanitized authentication/authorization reason |
 | Alpaca returns 429 | Rate-limit exception; the scheduler starts a one-minute cooldown |
-| Connection or response times out | Timeout exception |
+| Connection or response times out | Provider exception with a sanitized timeout reason |
 | Alpaca returns a server or other HTTP error | Provider exception |
-| JSON, prices, or timestamps are invalid | Response exception |
-| Batch response omits a requested symbol | That instrument keeps its stored values |
-| One batch entry is unusable | That symbol is skipped; other valid entries can still be persisted |
+| The whole JSON response is malformed | Provider exception |
+| Batch response omits a requested symbol | That instrument keeps its stored values and a safe warning identifies the symbol |
+| One batch entry is unusable | A safe warning identifies the symbol; other valid entries can still be persisted |
 | Provider call fails before persistence | All existing cached values remain unchanged |
 | One instrument fails during batch persistence | The failure is logged and other returned instruments continue |
 
@@ -233,13 +227,12 @@ These failures do not submit orders or change order status. There is no public m
 |---|---|
 | `AlpacaProperties` | Binds Alpaca credentials, URL, feed, timeouts, and the symbol allowlist |
 | `AlpacaMarketDataConfiguration` | Builds the dedicated Spring `RestClient` with connect and read timeouts |
-| `MarketDataProvider` | Provider-neutral contract for single and batch snapshots |
+| `MarketDataProvider` | Provider-neutral contract for batch snapshots |
 | `AlpacaMarketDataClient` | Alpaca HTTP integration and response mapping |
 | `MarketSnapshot` | Provider-neutral quote and trade value object |
 | `MarketDataBatchScheduler` | Starts enabled fixed-delay refresh cycles and handles cooldown |
 | `MarketDataBatchRefreshService` | Selects eligible instruments and coordinates one batch refresh |
-| `MarketDataRefreshService` | Provides the currently unused single-instrument refresh path |
-| `MarketSnapshotPersistenceService` | Writes complete quote/trade groups in a transaction |
+| `MarketSnapshotPersistenceService` | Writes complete quote/trade groups in a transaction and reports whether any row changed |
 | `InstrumentRepository` | Selects instruments and performs guarded SQL updates |
 | `InstrumentService` / `InstrumentController` | Exposes the stored market data through existing instrument endpoints |
 
@@ -269,14 +262,14 @@ Implemented now:
 - IEX quote and latest-trade mapping;
 - independent, newer-only quote and trade persistence;
 - non-tradable write protection;
-- last-known market values returned by the existing instrument API; and
-- a single-instrument refresh method available for a future internal caller.
+- per-symbol partial-success handling with sanitized warnings; and
+- last-known market values returned by the existing instrument API.
 
 Not implemented now:
 
 - submitting Spring client orders to Alpaca;
-- connecting live bid/ask retrieval to order execution;
-- execution-price freshness or market-hours rules;
+- integrating persisted bid/ask selection and the 15-second freshness rule into order execution;
+- market-hours rules;
 - distributed scheduling across multiple application instances;
 - streaming market data; or
 - historical market-price storage.

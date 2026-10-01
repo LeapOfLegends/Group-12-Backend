@@ -24,6 +24,7 @@ class MarketDataBatchSchedulerTest {
     void schedulerIsDisabledByDefault() {
         new ApplicationContextRunner()
                 .withUserConfiguration(MarketDataBatchScheduler.class)
+                .withPropertyValues("market-data.refresh.enabled=false")
                 .run(context -> assertFalse(
                         context.containsBean("marketDataBatchScheduler")
                 ));

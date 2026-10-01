@@ -15,21 +15,24 @@ public class MarketSnapshotPersistenceService {
     }
 
     @Transactional
-    public void persist(Long instrumentId, MarketSnapshot snapshot) {
+    public boolean persist(Long instrumentId, MarketSnapshot snapshot) {
+        boolean observationWritten = false;
         if (snapshot.hasQuote()) {
-            instrumentRepository.updateQuoteSnapshot(
+            observationWritten = instrumentRepository.updateQuoteSnapshot(
                     instrumentId,
                     snapshot.bidPrice(),
                     snapshot.askPrice(),
                     snapshot.quoteAsOf()
-            );
+            ) > 0;
         }
         if (snapshot.hasLastTrade()) {
-            instrumentRepository.updateLastTradeSnapshot(
+            boolean tradeWritten = instrumentRepository.updateLastTradeSnapshot(
                     instrumentId,
                     snapshot.lastPrice(),
                     snapshot.lastTradeAsOf()
-            );
+            ) > 0;
+            observationWritten = observationWritten || tradeWritten;
         }
+        return observationWritten;
     }
 }

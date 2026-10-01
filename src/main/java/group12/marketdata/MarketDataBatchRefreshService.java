@@ -85,12 +85,18 @@ public class MarketDataBatchRefreshService {
             }
             for (InstrumentEntity instrument : matchingInstruments) {
                 try {
-                    persistenceService.persist(instrument.getInstrumentId(), entry.getValue());
-                    persistedInstruments++;
+                    if (persistenceService.persist(
+                            instrument.getInstrumentId(),
+                            entry.getValue()
+                    )) {
+                        persistedInstruments++;
+                    }
                 } catch (RuntimeException exception) {
                     LOGGER.warn(
-                            "Could not persist market snapshot for instrument {}",
-                            instrument.getInstrumentId()
+                            "Could not persist market snapshot for instrument {} ({})",
+                            instrument.getInstrumentId(),
+                            normalizeSymbol(instrument.getSymbol()),
+                            exception
                     );
                 }
             }

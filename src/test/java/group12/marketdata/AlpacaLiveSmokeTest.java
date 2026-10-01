@@ -6,6 +6,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -21,7 +22,7 @@ class AlpacaLiveSmokeTest {
                 .alpacaMarketDataRestClient(properties);
         AlpacaMarketDataClient client = new AlpacaMarketDataClient(restClient, properties);
 
-        MarketSnapshot snapshot = client.getCurrentMarketSnapshot(aapl());
+        MarketSnapshot snapshot = client.getCurrentMarketSnapshots(List.of(aapl())).get("AAPL");
 
         assertNotNull(snapshot);
         assertTrue(snapshot.hasQuote() || snapshot.hasLastTrade());
