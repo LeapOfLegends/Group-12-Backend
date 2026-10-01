@@ -84,7 +84,7 @@ stages{
                 sh '''
                     docker stop capstone-backend || true
                     docker rm capstone-backend || true
-                    docker run -d --name capstone-backend -p 8080:8081 capstone-backend:0.1.0
+                    docker run -d --name capstone-backend -p 8081:8081 capstone-backend:0.1.0
                 '''
             }
         }
