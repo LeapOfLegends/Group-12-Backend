@@ -12,8 +12,10 @@ import lombok.RequiredArgsConstructor;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 
 
+@Slf4j 
 @Service
 @RequiredArgsConstructor
 public class HoldingService {
@@ -119,6 +121,7 @@ public class HoldingService {
 
         holding.setQuantity(quantity);
         holding.setAverageCost(averageCost);
+        log.info("Holding updated: clientId={}, instrumentId={}", clientId, instrumentId);
         return holding;
     }
 
@@ -139,6 +142,7 @@ public class HoldingService {
     public void deleteHolding(Long holdingId, Long clientId) {
         getHoldingByHoldingIdAndClientIdForDelete(holdingId, clientId);
         holdingRepository.deleteHoldingByHoldingIdAndClientId(holdingId, clientId);
+        log.info("Holding deleted: clientId={}, holdingId={}", clientId, holdingId);
     }
 
 }
