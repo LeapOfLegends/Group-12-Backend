@@ -9,7 +9,6 @@ import group12.Entities.HoldingEntity;
 import group12.Repository.HoldingRepository;
 import group12.Repository.ClientRepository;
 import lombok.RequiredArgsConstructor;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -99,11 +98,11 @@ public class HoldingService {
     }
 
     @Transactional
-    public HoldingEntity updateHolding(Long instrumentId,  Long clientId, Integer quantity, BigDecimal averageCost) {
+    public HoldingEntity updateHolding(Long instrumentId,  Long clientId, BigDecimal quantity, BigDecimal averageCost) {
         //update Holding entity
         HoldingEntity holding = getHoldingByInstrumentIdAndClientIdForUpdate(instrumentId, clientId);
 
-        if (quantity <= 0) {
+        if (quantity.compareTo(BigDecimal.ZERO) <= 0) {
             throw new HoldingArgumentInvalidException("Quantity must be greater than zero");
         }
         

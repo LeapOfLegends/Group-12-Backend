@@ -72,7 +72,7 @@ public interface HoldingRepository {
             WHERE
                 client_id = #{clientId} and instrument_id = #{instrumentId}
             """)
-    int updateHolding(@Param("instrumentId") Long instrument_id, @Param("clientId") Long client_id, @Param("quantity") Integer quantity, @Param("averageCost") BigDecimal average_cost);
+    int updateHolding(@Param("instrumentId") Long instrument_id, @Param("clientId") Long client_id, @Param("quantity") BigDecimal quantity, @Param("averageCost") BigDecimal average_cost);
 
     @Select("""
         SELECT
@@ -112,5 +112,5 @@ public interface HoldingRepository {
         keyProperty = "holdingId",
         keyColumn = "holding_id"
     )
-    HoldingEntity insert(HoldingEntity holding);
+    int insert(HoldingEntity holding);
 }
