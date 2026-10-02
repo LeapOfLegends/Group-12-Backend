@@ -2,6 +2,8 @@ package group12.Repository;
 
 import group12.Entities.HoldingEntity;
 import group12.Entities.InstrumentEntity;
+import group12.marketdata.MarketSnapshot;
+import group12.marketdata.MarketSnapshotPersistenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -14,18 +16,22 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Testcontainers(disabledWithoutDocker = true)
@@ -56,6 +62,9 @@ class FinancialSchemaIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private MarketSnapshotPersistenceService marketSnapshotPersistenceService;
+
     private Long clientId;
     private Long instrumentId;
 
@@ -81,56 +90,265 @@ class FinancialSchemaIntegrationTest {
 
     @Test
     void instrument_positivePricesAndTimestampsPersistAsCoherentSnapshots() {
-        jdbcTemplate.update("""
-                UPDATE instruments
-                SET bid_price = 123.45678901,
-                    ask_price = 123.55678901,
-                    last_price = 123.50678901,
-                    quote_as_of = '2026-09-28T15:01:02.123456Z'::timestamptz,
-                    last_trade_as_of = '2026-09-28T15:01:03.654321Z'::timestamptz
-                WHERE instrument_id = ?
-                """, instrumentId);
+        OffsetDateTime quoteAsOf = OffsetDateTime.parse("2026-09-28T15:01:02.123456Z");
+        OffsetDateTime lastTradeAsOf =
+                OffsetDateTime.parse("2026-09-28T15:01:03.654321Z");
+
+        int quoteRows = instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("123.45678901"),
+                new BigDecimal("123.55678901"),
+                quoteAsOf
+        );
+        int tradeRows = instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("123.50678901"),
+                lastTradeAsOf
+        );
 
         InstrumentEntity instrument = instrumentRepository.findBySymbol("NULLS").orElseThrow();
 
+        assertEquals(1, quoteRows);
+        assertEquals(1, tradeRows);
         assertEquals(new BigDecimal("123.45678901"), instrument.getBidPrice());
         assertEquals(new BigDecimal("123.55678901"), instrument.getAskPrice());
         assertEquals(new BigDecimal("123.50678901"), instrument.getLastPrice());
         assertEquals(
-                Instant.parse("2026-09-28T15:01:02.123456Z"),
+                quoteAsOf.toInstant(),
                 instrument.getQuoteAsOf().toInstant()
         );
         assertEquals(
-                Instant.parse("2026-09-28T15:01:03.654321Z"),
+                lastTradeAsOf.toInstant(),
                 instrument.getLastTradeAsOf().toInstant()
         );
+    }
+
+    @Test
+    void instrument_isTradableColumnMapsToTradableProperty() {
+        assertTrue(instrumentRepository.findById(instrumentId).orElseThrow().isTradable());
+
+        jdbcTemplate.update(
+                "UPDATE instruments SET is_tradable = FALSE WHERE instrument_id = ?",
+                instrumentId
+        );
+
+        assertFalse(instrumentRepository.findById(instrumentId).orElseThrow().isTradable());
+    }
+
+    @Test
+    void nonTradableInstrumentPreservesItsCachedMarketSnapshot() {
+        OffsetDateTime initialAt = OffsetDateTime.parse("2026-09-29T15:00:00Z");
+        OffsetDateTime newerAt = initialAt.plusSeconds(1);
+        instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("10.00000000"),
+                new BigDecimal("10.10000000"),
+                initialAt
+        );
+        instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("10.05000000"),
+                initialAt
+        );
+        jdbcTemplate.update(
+                "UPDATE instruments SET is_tradable = FALSE WHERE instrument_id = ?",
+                instrumentId
+        );
+
+        assertEquals(0, instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("20.00000000"),
+                new BigDecimal("20.10000000"),
+                newerAt
+        ));
+        assertEquals(0, instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("20.05000000"),
+                newerAt
+        ));
+
+        InstrumentEntity persisted = instrumentRepository.findById(instrumentId).orElseThrow();
+        assertEquals(new BigDecimal("10.00000000"), persisted.getBidPrice());
+        assertEquals(new BigDecimal("10.10000000"), persisted.getAskPrice());
+        assertEquals(new BigDecimal("10.05000000"), persisted.getLastPrice());
+        assertEquals(initialAt.toInstant(), persisted.getQuoteAsOf().toInstant());
+        assertEquals(initialAt.toInstant(), persisted.getLastTradeAsOf().toInstant());
+    }
+
+    @Test
+    void quoteUpdate_changesQuoteTogetherAndPreservesLastTradeSnapshot() {
+        OffsetDateTime initialQuoteAsOf = OffsetDateTime.parse("2026-09-28T15:00:00Z");
+        OffsetDateTime newerQuoteAsOf = OffsetDateTime.parse("2026-09-28T15:00:01Z");
+        OffsetDateTime lastTradeAsOf = OffsetDateTime.parse("2026-09-28T14:59:59Z");
+        instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("10.00000000"),
+                new BigDecimal("10.10000000"),
+                initialQuoteAsOf
+        );
+        instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("10.05000000"),
+                lastTradeAsOf
+        );
+
+        int rows = instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("10.20000000"),
+                new BigDecimal("10.30000000"),
+                newerQuoteAsOf
+        );
+
+        InstrumentEntity instrument = instrumentRepository.findById(instrumentId).orElseThrow();
+        assertEquals(1, rows);
+        assertEquals(new BigDecimal("10.20000000"), instrument.getBidPrice());
+        assertEquals(new BigDecimal("10.30000000"), instrument.getAskPrice());
+        assertEquals(newerQuoteAsOf.toInstant(), instrument.getQuoteAsOf().toInstant());
+        assertEquals(new BigDecimal("10.05000000"), instrument.getLastPrice());
+        assertEquals(lastTradeAsOf.toInstant(), instrument.getLastTradeAsOf().toInstant());
+    }
+
+    @Test
+    void lastTradeUpdate_changesTradeTogetherAndPreservesQuoteSnapshot() {
+        OffsetDateTime quoteAsOf = OffsetDateTime.parse("2026-09-28T15:00:00Z");
+        OffsetDateTime initialTradeAsOf = OffsetDateTime.parse("2026-09-28T15:00:01Z");
+        OffsetDateTime newerTradeAsOf = OffsetDateTime.parse("2026-09-28T15:00:02Z");
+        instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("10.00000000"),
+                new BigDecimal("10.10000000"),
+                quoteAsOf
+        );
+        instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("10.05000000"),
+                initialTradeAsOf
+        );
+
+        int rows = instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("10.07500000"),
+                newerTradeAsOf
+        );
+
+        InstrumentEntity instrument = instrumentRepository.findById(instrumentId).orElseThrow();
+        assertEquals(1, rows);
+        assertEquals(new BigDecimal("10.07500000"), instrument.getLastPrice());
+        assertEquals(newerTradeAsOf.toInstant(), instrument.getLastTradeAsOf().toInstant());
+        assertEquals(new BigDecimal("10.00000000"), instrument.getBidPrice());
+        assertEquals(new BigDecimal("10.10000000"), instrument.getAskPrice());
+        assertEquals(quoteAsOf.toInstant(), instrument.getQuoteAsOf().toInstant());
+    }
+
+    @Test
+    void olderAndIdenticalMarketObservationsDoNotOverwriteNewerSnapshots() {
+        OffsetDateTime persistedAt = OffsetDateTime.parse("2026-09-28T15:00:02Z");
+        OffsetDateTime olderAt = OffsetDateTime.parse("2026-09-28T15:00:01Z");
+        instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("20.00000000"),
+                new BigDecimal("20.10000000"),
+                persistedAt
+        );
+        instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("20.05000000"),
+                persistedAt
+        );
+
+        assertEquals(0, instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("1.00000000"),
+                new BigDecimal("1.10000000"),
+                olderAt
+        ));
+        assertEquals(0, instrumentRepository.updateQuoteSnapshot(
+                instrumentId,
+                new BigDecimal("2.00000000"),
+                new BigDecimal("2.10000000"),
+                persistedAt
+        ));
+        assertEquals(0, instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("1.05000000"),
+                olderAt
+        ));
+        assertEquals(0, instrumentRepository.updateLastTradeSnapshot(
+                instrumentId,
+                new BigDecimal("2.05000000"),
+                persistedAt
+        ));
+
+        InstrumentEntity instrument = instrumentRepository.findById(instrumentId).orElseThrow();
+        assertEquals(new BigDecimal("20.00000000"), instrument.getBidPrice());
+        assertEquals(new BigDecimal("20.10000000"), instrument.getAskPrice());
+        assertEquals(new BigDecimal("20.05000000"), instrument.getLastPrice());
+    }
+
+    @Test
+    void marketSnapshotUpdates_forUnknownInstrumentAffectZeroRows() {
+        OffsetDateTime observedAt = OffsetDateTime.parse("2026-09-28T15:00:00Z");
+
+        assertEquals(0, instrumentRepository.updateQuoteSnapshot(
+                999L,
+                new BigDecimal("1.00000000"),
+                new BigDecimal("1.10000000"),
+                observedAt
+        ));
+        assertEquals(0, instrumentRepository.updateLastTradeSnapshot(
+                999L,
+                new BigDecimal("1.05000000"),
+                observedAt
+        ));
+    }
+
+    @Test
+    void marketSnapshotPersistence_rollsBackQuoteWhenTradeWriteFails() {
+        OffsetDateTime observedAt = OffsetDateTime.parse("2026-09-29T15:00:00Z");
+        MarketSnapshot snapshot = new MarketSnapshot(
+                new BigDecimal("10.00000000"),
+                new BigDecimal("10.10000000"),
+                new BigDecimal("-1.00000000"),
+                observedAt,
+                observedAt
+        );
+
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> marketSnapshotPersistenceService.persist(instrumentId, snapshot)
+        );
+
+        InstrumentEntity persisted = instrumentRepository.findById(instrumentId).orElseThrow();
+        assertNull(persisted.getBidPrice());
+        assertNull(persisted.getAskPrice());
+        assertNull(persisted.getQuoteAsOf());
+        assertNull(persisted.getLastPrice());
+        assertNull(persisted.getLastTradeAsOf());
     }
 
     @ParameterizedTest(name = "{0} rejects {1}")
     @MethodSource("invalidMarketPrices")
     void instrument_zeroAndNegativePricesAreRejected(String column, BigDecimal value) {
-        String sql = switch (column) {
-            case "bid_price" -> """
-                    UPDATE instruments
-                    SET bid_price = ?, ask_price = 1.00000000, quote_as_of = CURRENT_TIMESTAMP
-                    WHERE instrument_id = ?
-                    """;
-            case "ask_price" -> """
-                    UPDATE instruments
-                    SET bid_price = 1.00000000, ask_price = ?, quote_as_of = CURRENT_TIMESTAMP
-                    WHERE instrument_id = ?
-                    """;
-            case "last_price" -> """
-                    UPDATE instruments
-                    SET last_price = ?, last_trade_as_of = CURRENT_TIMESTAMP
-                    WHERE instrument_id = ?
-                    """;
-            default -> throw new IllegalArgumentException("Unexpected price column: " + column);
-        };
+        OffsetDateTime observedAt = OffsetDateTime.parse("2026-09-28T15:00:00Z");
 
         assertThrows(
                 DataIntegrityViolationException.class,
-                () -> jdbcTemplate.update(sql, value, instrumentId)
+                () -> {
+                    switch (column) {
+                        case "bid_price" -> instrumentRepository.updateQuoteSnapshot(
+                                instrumentId, value, BigDecimal.ONE, observedAt
+                        );
+                        case "ask_price" -> instrumentRepository.updateQuoteSnapshot(
+                                instrumentId, BigDecimal.ONE, value, observedAt
+                        );
+                        case "last_price" -> instrumentRepository.updateLastTradeSnapshot(
+                                instrumentId, value, observedAt
+                        );
+                        default -> throw new IllegalArgumentException(
+                                "Unexpected price column: " + column
+                        );
+                    }
+                }
         );
     }
 
@@ -149,12 +367,69 @@ class FinancialSchemaIntegrationTest {
     void holding_fractionalQuantityPersistsWithoutTruncation() {
         HoldingEntity holding = holding(new BigDecimal("0.12345678"));
 
-        holdingRepository.insert(holding);
+        int rows = holdingRepository.insert(holding);
 
         List<HoldingEntity> persisted = holdingRepository.getHoldingsByClientId(clientId);
+        assertEquals(1, rows);
+        assertNotNull(holding.getHoldingId());
         assertEquals(1, persisted.size());
         assertEquals(new BigDecimal("0.12345678"), persisted.getFirst().getQuantity());
         assertEquals(new BigDecimal("987.6543210987654321"), persisted.getFirst().getAverageCost());
+    }
+
+    @Test
+    void holding_updateRetainsFractionalPrecision() {
+        HoldingEntity holding = holding(new BigDecimal("1.00000000"));
+        holdingRepository.insert(holding);
+
+        int rows = holdingRepository.updateHolding(
+                instrumentId,
+                clientId,
+                new BigDecimal("2.87654321"),
+                new BigDecimal("123.4567890123456789")
+        );
+
+        HoldingEntity persisted = holdingRepository
+                .getHoldingByInstrumentIdAndClientId(instrumentId, clientId)
+                .orElseThrow();
+        assertEquals(1, rows);
+        assertEquals(new BigDecimal("2.87654321"), persisted.getQuantity());
+        assertEquals(new BigDecimal("123.4567890123456789"), persisted.getAverageCost());
+    }
+
+    @Test
+    @Transactional
+    void holding_rowLockingAndIdQueriesMapTheRequestedHolding() {
+        HoldingEntity holding = holding(new BigDecimal("3.12500000"));
+        holdingRepository.insert(holding);
+
+        HoldingEntity locked = holdingRepository
+                .getHoldingByInstrumentIdAndClientIdForUpdate(instrumentId, clientId);
+        HoldingEntity byId = holdingRepository
+                .getHoldingByHoldingIdAndClientId(holding.getHoldingId(), clientId);
+
+        assertNotNull(locked);
+        assertNotNull(byId);
+        assertEquals(holding.getHoldingId(), locked.getHoldingId());
+        assertEquals(new BigDecimal("3.12500000"), locked.getQuantity());
+        assertEquals(holding.getHoldingId(), byId.getHoldingId());
+    }
+
+    @Test
+    void holding_deleteReturnsAffectedRowCountAndRemovesPosition() {
+        HoldingEntity holding = holding(new BigDecimal("1.25000000"));
+        holdingRepository.insert(holding);
+
+        int rows = holdingRepository.deleteHoldingByHoldingIdAndClientId(
+                holding.getHoldingId(),
+                clientId
+        );
+
+        assertEquals(1, rows);
+        assertEquals(
+                0,
+                holdingRepository.getHoldingsByClientId(clientId).size()
+        );
     }
 
     @Test
