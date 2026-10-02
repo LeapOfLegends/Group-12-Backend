@@ -6,7 +6,7 @@ This document defines the manual versioning and release workflow for the LEAP tr
 
 The backend and API are being combined in this repository. The frontend remains a separate repository and will have its own independent version. A frontend release does not need to match a backend release.
 
-This project uses Java 17, Spring Boot, Maven, Python analytics, Jenkins for CI/CD, and GitHub for source control. Semantic release versions are managed manually. Jenkins build numbers and Git commit SHAs provide automatic identity for individual builds.
+This project uses Java 25, Spring Boot, Maven, Python analytics, Jenkins for CI/CD, Docker for containerization, and GitHub for source control. Semantic release versions are managed manually. Jenkins build numbers and Git commit SHAs provide automatic identity for individual builds.
 
 ## Versioning Strategy
 
@@ -103,12 +103,31 @@ The Maven project coordinates currently found in this repository are:
 ```xml
 <groupId>com.group12</groupId>
 <artifactId>group-12-backend</artifactId>
-<version>0.0.1-SNAPSHOT</version>
+<version>0.1.0</version>
 ```
 
 The parent Spring Boot version is dependency and build configuration, not the application release version. Do not treat the parent version as the LEAP backend version.
 
 Do not introduce `version.txt`. Do not duplicate the application version across Java files, YAML files, README files, Jenkins configuration, or other files. Keeping one manually maintained source of truth prevents version mismatches.
+
+### Jenkins and Docker version handling
+
+The `Dockerfile` does not contain the application version. It copies the JAR produced by Maven and renames it to `app.jar` inside the image, so it does not need to be edited for a release.
+
+Jenkins should read the semantic version from `pom.xml` and use that value when creating a versioned Docker image tag. The Maven version can be read in the pipeline with:
+
+```bash
+mvn help:evaluate -Dexpression=project.version -q -DforceStdout
+```
+
+The Jenkins build-number tag and semantic-version tag have different purposes:
+
+```text
+capstone-backend:94       exact Jenkins build
+capstone-backend:0.5.0    semantic release version
+```
+
+The current `Jenkinsfile` still hardcodes `capstone-backend:0.1.0` in its Docker tagging and deployment commands. Until those references are changed to use the Maven-derived version, a release must update both hardcoded Jenkins references as part of the release PR. After that one-time pipeline correction, `pom.xml` and `CHANGELOG.md` are the only files whose release versions are maintained manually.
 
 ## Normal Development Workflow
 
@@ -192,7 +211,7 @@ After:
 
 ### 7. Update the changelog
 
-This repository does not currently contain `CHANGELOG.md`. When the team adopts this workflow for a release, create it at the repository root and maintain it for subsequent releases. This documentation task does not create that file.
+Update the existing `CHANGELOG.md` at the repository root. Move the release's relevant entries from `Unreleased` into a new versioned section and add the release date.
 
 A release entry should follow this general form:
 
@@ -213,29 +232,33 @@ A release entry should follow this general form:
 
 Replace `YYYY-MM-DD` with the release date. Summarize meaningful release-level changes instead of copying every Git commit.
 
-### 8. Commit the release preparation
+### 8. Verify Jenkins version propagation
 
-Because `CHANGELOG.md` does not currently exist, add it when adopting the workflow, then commit both release files:
+Confirm that the Jenkins pipeline obtains the application version from `pom.xml`. If the pipeline still contains hardcoded semantic-version image tags, update those references to the selected release version in the release PR. Do not add a version to the `Dockerfile`.
+
+### 9. Commit the release preparation
+
+Commit the two normal release files:
 
 ```bash
 git add pom.xml CHANGELOG.md
 git commit -m "chore(release): prepare v0.5.0"
 ```
 
-If the team deliberately defers creating a changelog, stage only the file that exists:
+If the `Jenkinsfile` still requires the temporary hardcoded-version update described above, include it in the same release commit:
 
 ```bash
-git add pom.xml
+git add pom.xml CHANGELOG.md Jenkinsfile
 git commit -m "chore(release): prepare v0.5.0"
 ```
 
-### 9. Push the release branch
+### 10. Push the release branch
 
 ```bash
 git push origin release/v0.5.0
 ```
 
-### 10. Open the release Pull Request
+### 11. Open the release Pull Request
 
 Open a Pull Request with this direction:
 
@@ -249,7 +272,7 @@ Suggested title:
 chore(release): prepare v0.5.0
 ```
 
-### 11. Review and merge
+### 12. Review and merge
 
 The release PR follows the normal protected-branch policy:
 
@@ -257,14 +280,14 @@ The release PR follows the normal protected-branch policy:
 * Two approvals are required.
 * Reviewers verify the selected version and release notes before merging.
 
-### 12. Update local main after the merge
+### 13. Update local main after the merge
 
 ```bash
 git checkout main
 git pull
 ```
 
-### 13. Create an annotated Git tag
+### 14. Create an annotated Git tag
 
 Create the tag from the updated `main` so it points to the merged release commit:
 
@@ -272,13 +295,13 @@ Create the tag from the updated `main` so it points to the merged release commit
 git tag -a v0.5.0 -m "Release v0.5.0"
 ```
 
-### 14. Push the tag
+### 15. Push the tag
 
 ```bash
 git push origin v0.5.0
 ```
 
-### 15. Create the GitHub Release
+### 16. Create the GitHub Release
 
 Create a GitHub Release associated with the same tag:
 
@@ -289,13 +312,14 @@ Release title: v0.5.0
 
 Release notes should summarize the same meaningful changes recorded in `CHANGELOG.md`.
 
-### 16. Verify all identifiers
+### 17. Verify all identifiers
 
 Confirm that every release identifier agrees:
 
 ```text
 pom.xml:        0.5.0
 CHANGELOG.md:   0.5.0
+Docker image:   capstone-backend:0.5.0
 Git tag:        v0.5.0
 GitHub Release: v0.5.0
 ```
@@ -371,6 +395,8 @@ Add the changelog entry:
 * Added coverage for insufficient-cash order validation.
 ```
 
+Confirm that Jenkins will tag the Docker image with the Maven-derived `0.5.1` version. If the current hardcoded image tag has not yet been replaced, update both Jenkins references and include `Jenkinsfile` in the release commit.
+
 Commit and push the release preparation:
 
 ```bash
@@ -407,7 +433,9 @@ Release title: v0.5.1
 8. Every official release should have a corresponding GitHub Release.
 9. `CHANGELOG.md` should describe meaningful release-level changes.
 10. Jenkins `BUILD_NUMBER` and the Git SHA identify individual builds and must not be confused with the semantic release version.
-11. Each repository is versioned independently. Future frontend releases do not need to match backend releases.
+11. Jenkins must obtain the application semantic version from `pom.xml` rather than maintain an independent version value.
+12. The `Dockerfile` must remain version-neutral and does not require release-specific edits.
+13. Each repository is versioned independently. Future frontend releases do not need to match backend releases.
 
 ## Release Checklist
 
@@ -417,6 +445,8 @@ Release title: v0.5.1
 * [ ] Create the `release/vX.Y.Z` branch
 * [ ] Update the project-level version in `pom.xml`
 * [ ] Update `CHANGELOG.md`
+* [ ] Confirm Jenkins derives the Docker image version from `pom.xml`
+* [ ] If Jenkins still contains hardcoded semantic-version tags, update both references or complete the one-time pipeline correction
 * [ ] Commit using `chore(release): prepare vX.Y.Z`
 * [ ] Push the release branch
 * [ ] Open the release PR into `main`
@@ -427,4 +457,4 @@ Release title: v0.5.1
 * [ ] Create the annotated `vX.Y.Z` Git tag
 * [ ] Push the Git tag
 * [ ] Create the matching GitHub Release
-* [ ] Verify `pom.xml`, `CHANGELOG.md`, the Git tag, and the GitHub Release all use the same version
+* [ ] Verify `pom.xml`, `CHANGELOG.md`, the Docker image tag, the Git tag, and the GitHub Release all use the same version
