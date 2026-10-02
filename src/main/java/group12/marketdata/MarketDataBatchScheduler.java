@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 )
 public class MarketDataBatchScheduler {
 
-    static final Duration RATE_LIMIT_COOLDOWN = Duration.ofMinutes(1);
+    static final Duration ALPACA_RATE_LIMIT_COOLDOWN = Duration.ofMinutes(1);
 
     private static final Logger LOGGER =
             LoggerFactory.getLogger(MarketDataBatchScheduler.class);
@@ -55,7 +55,7 @@ public class MarketDataBatchScheduler {
             }
             batchRefreshService.refreshEligibleInstruments();
         } catch (MarketDataRateLimitException exception) {
-            cooldownUntil = clock.instant().plus(RATE_LIMIT_COOLDOWN);
+            cooldownUntil = clock.instant().plus(ALPACA_RATE_LIMIT_COOLDOWN);
             LOGGER.warn("Market-data polling paused temporarily after provider rate limiting");
         } catch (MarketDataException exception) {
             LOGGER.warn("Scheduled market-data refresh failed: {}", exception.getMessage());
