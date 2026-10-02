@@ -17,9 +17,13 @@ class OrderTransactionBoundaryTest {
         Transactional acceptanceTransaction = OrderAcceptanceService.class
                 .getMethod("acceptSubmittedOrder", Long.class)
                 .getAnnotation(Transactional.class);
+        Transactional executionTransaction = OrderExecutionService.class
+                .getMethod("executeAcceptedOrder", Long.class)
+                .getAnnotation(Transactional.class);
 
         assertEquals(Propagation.REQUIRES_NEW, submissionTransaction.propagation());
         assertEquals(Propagation.REQUIRES_NEW, acceptanceTransaction.propagation());
+        assertEquals(Propagation.REQUIRES_NEW, executionTransaction.propagation());
     }
 
     @Test

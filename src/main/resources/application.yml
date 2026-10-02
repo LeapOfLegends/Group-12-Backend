@@ -91,3 +91,5 @@ market-data:
 order-lifecycle:
     quote:
         max-age: ${ORDER_LIFECYCLE_QUOTE_MAX_AGE:30s}
+    execution:
+        max-wait: ${ORDER_LIFECYCLE_EXECUTION_MAX_WAIT:2m}
