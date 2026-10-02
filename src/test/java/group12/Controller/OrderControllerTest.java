@@ -135,6 +135,7 @@ class OrderControllerTest {
     void submitOrder_withValidRequest_returnsCreatedOrderAndLocation() throws Exception {
         // Arrange
         OrderEntity createdOrder = order(ORDER_ID, CLIENT_ID, INSTRUMENT_ID, OrderType.BUY, QUANTITY);
+        createdOrder.setStatus(OrderStatus.ACCEPTED);
         when(orderService.submitOrder(any(CreateOrderRequest.class))).thenReturn(createdOrder);
 
         // Act and Assert
@@ -144,7 +145,7 @@ class OrderControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/orders/42"))
                 .andExpect(jsonPath("$.orderId").value(ORDER_ID))
-                .andExpect(jsonPath("$.status").value("SUBMITTED"));
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
 
         ArgumentCaptor<CreateOrderRequest> requestCaptor =
                 ArgumentCaptor.forClass(CreateOrderRequest.class);

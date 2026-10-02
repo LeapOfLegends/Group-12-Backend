@@ -1,7 +1,6 @@
 package group12.Services;
 
 import group12.Entities.OrderEntity;
-import group12.Entities.OrderStatus;
 import group12.Entities.OrderType;
 import group12.Repository.OrderRepository;
 import group12.dto.CreateOrderRequest;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -24,8 +22,7 @@ import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,46 +31,64 @@ class OrderServiceTest {
 
     @Mock
     private OrderRepository orderRepository;
+    @Mock
+    private OrderSubmissionService orderSubmissionService;
+    @Mock
+    private OrderAcceptanceService orderAcceptanceService;
 
     private OrderService orderService;
 
     @BeforeEach
     void setUp() {
-        orderService = new OrderService(orderRepository);
+        orderService = new OrderService(
+                orderRepository,
+                orderSubmissionService,
+                orderAcceptanceService
+        );
     }
 
     @Test
-    @DisplayName("submitOrder inserts new order with correct details and returns persisted order from repository")
-    void submitOrder_withValidRequest_insertsAndReturnsPersistedOrder() {
-        // Arrange
+    @DisplayName("submitOrder submits first, then accepts, and returns the acceptance result")
+    void submitOrder_submitsThenAcceptsAndReturnsResult() {
         CreateOrderRequest request = new CreateOrderRequest(
                 10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
         );
-        OrderEntity persistedOrder = order(
+        OrderEntity submittedOrder = order(
                 42L, 10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
         );
-        persistedOrder.setStatus(OrderStatus.SUBMITTED);
+        OrderEntity acceptedOrder = order(
+                42L, 10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
+        );
+        when(orderSubmissionService.submit(request)).thenReturn(submittedOrder);
+        when(orderAcceptanceService.acceptSubmittedOrder(42L)).thenReturn(acceptedOrder);
 
-        doAnswer(invocation -> {
-            OrderEntity insertedOrder = invocation.getArgument(0);
-            insertedOrder.setOrderId(42L);
-            return 1;
-        }).when(orderRepository).insert(any(OrderEntity.class));
-        when(orderRepository.findById(42L)).thenReturn(Optional.of(persistedOrder));
-
-        // Act
         OrderEntity result = orderService.submitOrder(request);
 
-        // Assert
-        ArgumentCaptor<OrderEntity> orderCaptor = ArgumentCaptor.forClass(OrderEntity.class);
-        verify(orderRepository).insert(orderCaptor.capture());
-        OrderEntity insertedOrder = orderCaptor.getValue();
-        assertEquals(10L, insertedOrder.getClientId());
-        assertEquals(20L, insertedOrder.getInstrumentId());
-        assertEquals(OrderType.BUY, insertedOrder.getOrderType());
-        assertEquals(new BigDecimal("7.12500000"), insertedOrder.getQuantity());
-        verify(orderRepository).findById(42L);
-        assertSame(persistedOrder, result);
+        var orderedCalls = inOrder(orderSubmissionService, orderAcceptanceService);
+        orderedCalls.verify(orderSubmissionService).submit(request);
+        orderedCalls.verify(orderAcceptanceService).acceptSubmittedOrder(42L);
+        assertSame(acceptedOrder, result);
+    }
+
+    @Test
+    @DisplayName("submitOrder propagates acceptance infrastructure failures")
+    void submitOrder_whenAcceptanceFails_propagatesFailure() {
+        CreateOrderRequest request = new CreateOrderRequest(
+                10L, 20L, OrderType.BUY, BigDecimal.ONE
+        );
+        OrderEntity submittedOrder = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
+        RuntimeException infrastructureFailure = new RuntimeException("database unavailable");
+        when(orderSubmissionService.submit(request)).thenReturn(submittedOrder);
+        when(orderAcceptanceService.acceptSubmittedOrder(42L))
+                .thenThrow(infrastructureFailure);
+
+        RuntimeException result = assertThrows(
+                RuntimeException.class,
+                () -> orderService.submitOrder(request)
+        );
+
+        assertSame(infrastructureFailure, result);
+        verify(orderAcceptanceService).acceptSubmittedOrder(42L);
     }
 
     @Test

@@ -87,3 +87,7 @@ market-data:
     refresh:
         enabled: ${MARKET_DATA_REFRESH_ENABLED:true}
         interval: ${MARKET_DATA_REFRESH_INTERVAL:5s}
+
+order-lifecycle:
+    quote:
+        max-age: ${ORDER_LIFECYCLE_QUOTE_MAX_AGE:30s}
