@@ -25,7 +25,7 @@ flowchart LR
 ## One refresh cycle
 
 1. `MarketDataBatchScheduler` starts a cycle on the configured fixed delay when `market-data.refresh.enabled` is `true`. It calls `MarketDataBatchRefreshService`.
-2. `MarketDataBatchRefreshService` asks `InstrumentRepository` for rows marked tradable. It then asks the active `MarketDataProvider` whether each instrument is supported. The current Alpaca provider accepts nonblank, allowlisted symbols whose asset class is `Equity` and currency is `USD`. Supported instruments are grouped by normalized symbol.
+2. `MarketDataBatchRefreshService` asks `InstrumentRepository` for rows marked tradable (there currently isn't anything that actually checks tradability against real world events). It then asks the active `MarketDataProvider` whether each instrument is supported by said provider. The current Alpaca provider accepts nonblank, allowlisted symbols whose asset class is `Equity` and currency is `USD`. Supported instruments are grouped by normalized symbol.
 3. Through the `MarketDataProvider` interface, the refresh service asks `AlpacaMarketDataClient` for the current snapshots. The client checks support again and makes one Alpaca batch snapshot request for the supported symbols.
 4. The client maps Alpaca's returned quotes and trades to provider-neutral `MarketSnapshot` values. The refresh service matches each snapshot back to its instrument rows and passes it to `MarketSnapshotPersistenceService`.
 5. `MarketSnapshotPersistenceService` coordinates the writes, while `InstrumentRepository` performs the actual SQL updates on the PostgreSQL `instruments` table.
