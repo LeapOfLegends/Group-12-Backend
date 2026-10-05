@@ -100,7 +100,8 @@ public class HoldingService {
     }
 
     @Transactional
-    public HoldingEntity updateHolding(Long instrumentId,  Long clientId, BigDecimal quantity, BigDecimal averageCost) {
+    public HoldingEntity updateHolding(Long instrumentId, Long clientId, BigDecimal quantity, BigDecimal averageCost) {
+
         //update Holding entity
         HoldingEntity holding = getHoldingByInstrumentIdAndClientIdForUpdate(instrumentId, clientId);
 

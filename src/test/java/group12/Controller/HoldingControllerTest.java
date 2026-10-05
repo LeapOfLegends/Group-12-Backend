@@ -59,7 +59,6 @@ public class HoldingControllerTest {
 
     @Test
     void getInstrumentHoldings_shouldReturn200AndHoldings() {
-
         HoldingEntity holding = holding(10L, 1L, 25L, new BigDecimal("5.125"));
         when(holdingService.getHoldingByInstrumentIdAndClientId(25L, 1L)).thenReturn(Optional.of(holding));
 
@@ -76,6 +75,7 @@ public class HoldingControllerTest {
         updated.setAverageCost(new BigDecimal("125.50"));
         HoldingUpdateRequest request = new HoldingUpdateRequest(new BigDecimal("8"), new BigDecimal("125.50"));
         when(holdingService.updateHolding(25L, 1L, new BigDecimal("8"), new BigDecimal("125.50"))).thenReturn(updated);
+
 
         ResponseEntity<HoldingEntity> response = holdingController.updateHolding(25L, 1L, request);
 
