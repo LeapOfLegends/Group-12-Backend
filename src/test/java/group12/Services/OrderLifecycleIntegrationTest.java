@@ -26,7 +26,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -93,7 +92,7 @@ class OrderLifecycleIntegrationTest {
     }
 
     @Test
-    void normalSubmissionAndAcceptance_useDifferentDatabaseTransactions() {
+    void normalSubmissionAcceptanceAndExecution_useDifferentDatabaseTransactions() {
         installTransactionAudit();
         Long clientId = insertClient("100");
         Long instrumentId = insertInstrument(true, "10", "CURRENT_TIMESTAMP");
@@ -107,9 +106,14 @@ class OrderLifecycleIntegrationTest {
                 Long.class,
                 result.getOrderId()
         );
-        assertEquals(OrderStatus.ACCEPTED, result.getStatus());
-        assertEquals(2, transactionIds.size());
-        assertNotEquals(transactionIds.get(0), transactionIds.get(1));
+        assertEquals(OrderStatus.FILLED, result.getStatus());
+        assertEquals(3, transactionIds.size());
+        assertEquals(3, transactionIds.stream().distinct().count());
+        assertEquals(new BigDecimal("80.0000000000000000"), accountBalance(clientId));
+        assertEquals(
+                new BigDecimal("2.00000000"),
+                holdingQuantity(clientId, instrumentId)
+        );
     }
 
     @Test

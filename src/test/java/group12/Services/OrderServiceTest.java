@@ -6,10 +6,13 @@ import group12.Entities.OrderType;
 import group12.Repository.OrderRepository;
 import group12.dto.CreateOrderRequest;
 import group12.exception.OrderNotFoundException;
+import group12.exception.RetryableOrderExecutionException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,14 +21,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 import java.math.BigDecimal;
-import java.util.Arrays;
-
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +39,8 @@ class OrderServiceTest {
     private OrderSubmissionService orderSubmissionService;
     @Mock
     private OrderAcceptanceService orderAcceptanceService;
+    @Mock
+    private OrderExecutionService orderExecutionService;
 
     private OrderService orderService;
 
@@ -46,13 +49,14 @@ class OrderServiceTest {
         orderService = new OrderService(
                 orderRepository,
                 orderSubmissionService,
-                orderAcceptanceService
+                orderAcceptanceService,
+                orderExecutionService
         );
     }
 
     @Test
-    @DisplayName("submitOrder submits first, then accepts, and returns the acceptance result")
-    void submitOrder_submitsThenAcceptsAndReturnsResult() {
+    @DisplayName("submitOrder submits, accepts, executes, and returns the execution result")
+    void submitOrder_whenAccepted_executesInOrderAndReturnsExecutionResult() {
         CreateOrderRequest request = new CreateOrderRequest(
                 10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
         );
@@ -63,25 +67,94 @@ class OrderServiceTest {
                 42L, 10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
         );
         acceptedOrder.setStatus(OrderStatus.ACCEPTED);
+        OrderEntity filledOrder = order(
+                42L, 10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
+        );
+        filledOrder.setStatus(OrderStatus.FILLED);
         when(orderSubmissionService.submit(request)).thenReturn(submittedOrder);
         when(orderAcceptanceService.acceptSubmittedOrder(42L)).thenReturn(acceptedOrder);
+        when(orderExecutionService.executeAcceptedOrder(42L)).thenReturn(filledOrder);
 
         OrderEntity result = orderService.submitOrder(request);
 
-        var orderedCalls = inOrder(orderSubmissionService, orderAcceptanceService);
+        var orderedCalls = inOrder(
+                orderSubmissionService,
+                orderAcceptanceService,
+                orderExecutionService
+        );
         orderedCalls.verify(orderSubmissionService).submit(request);
         orderedCalls.verify(orderAcceptanceService).acceptSubmittedOrder(42L);
-        assertSame(acceptedOrder, result);
-        assertEquals(OrderStatus.ACCEPTED, result.getStatus());
+        orderedCalls.verify(orderExecutionService).executeAcceptedOrder(42L);
+        assertSame(filledOrder, result);
+        assertEquals(OrderStatus.FILLED, result.getStatus());
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = OrderStatus.class,
+            names = {"SUBMITTED", "REJECTED", "FILLED", "FAILED"}
+    )
+    @DisplayName("submitOrder does not execute when acceptance does not return accepted")
+    void submitOrder_whenAcceptanceDoesNotReturnAccepted_doesNotExecute(
+            OrderStatus status
+    ) {
+        CreateOrderRequest request = new CreateOrderRequest(
+                10L, 20L, OrderType.BUY, BigDecimal.ONE
+        );
+        OrderEntity submittedOrder = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
+        OrderEntity acceptanceResult = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
+        acceptanceResult.setStatus(status);
+        when(orderSubmissionService.submit(request)).thenReturn(submittedOrder);
+        when(orderAcceptanceService.acceptSubmittedOrder(42L)).thenReturn(acceptanceResult);
+
+        OrderEntity result = orderService.submitOrder(request);
+
+        assertSame(acceptanceResult, result);
+        verify(orderExecutionService, never()).executeAcceptedOrder(42L);
     }
 
     @Test
-    @DisplayName("submitOrder has no direct execution-service dependency")
-    void submitOrder_doesNotDependOnExecutionService() {
-        boolean hasExecutionDependency = Arrays.stream(OrderService.class.getDeclaredFields())
-                .anyMatch(field -> field.getType().equals(OrderExecutionService.class));
+    @DisplayName("submitOrder returns accepted when execution has a retryable quote condition")
+    void submitOrder_whenExecutionIsRetryable_returnsAcceptedOrder() {
+        CreateOrderRequest request = new CreateOrderRequest(
+                10L, 20L, OrderType.BUY, BigDecimal.ONE
+        );
+        OrderEntity submittedOrder = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
+        OrderEntity acceptedOrder = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
+        acceptedOrder.setStatus(OrderStatus.ACCEPTED);
+        when(orderSubmissionService.submit(request)).thenReturn(submittedOrder);
+        when(orderAcceptanceService.acceptSubmittedOrder(42L)).thenReturn(acceptedOrder);
+        when(orderExecutionService.executeAcceptedOrder(42L)).thenThrow(
+                new RetryableOrderExecutionException("waiting for a current quote")
+        );
 
-        assertFalse(hasExecutionDependency);
+        OrderEntity result = orderService.submitOrder(request);
+
+        assertSame(acceptedOrder, result);
+        assertEquals(OrderStatus.ACCEPTED, result.getStatus());
+        verify(orderExecutionService).executeAcceptedOrder(42L);
+    }
+
+    @Test
+    @DisplayName("submitOrder propagates unexpected execution failures")
+    void submitOrder_whenExecutionFailsUnexpectedly_propagatesFailure() {
+        CreateOrderRequest request = new CreateOrderRequest(
+                10L, 20L, OrderType.BUY, BigDecimal.ONE
+        );
+        OrderEntity submittedOrder = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
+        OrderEntity acceptedOrder = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
+        acceptedOrder.setStatus(OrderStatus.ACCEPTED);
+        RuntimeException infrastructureFailure = new RuntimeException("database unavailable");
+        when(orderSubmissionService.submit(request)).thenReturn(submittedOrder);
+        when(orderAcceptanceService.acceptSubmittedOrder(42L)).thenReturn(acceptedOrder);
+        when(orderExecutionService.executeAcceptedOrder(42L)).thenThrow(infrastructureFailure);
+
+        RuntimeException result = assertThrows(
+                RuntimeException.class,
+                () -> orderService.submitOrder(request)
+        );
+
+        assertSame(infrastructureFailure, result);
     }
 
     @Test
@@ -103,6 +176,7 @@ class OrderServiceTest {
 
         assertSame(infrastructureFailure, result);
         verify(orderAcceptanceService).acceptSubmittedOrder(42L);
+        verify(orderExecutionService, never()).executeAcceptedOrder(42L);
     }
 
     @Test
