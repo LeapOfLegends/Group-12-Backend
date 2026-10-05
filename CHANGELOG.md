@@ -10,19 +10,8 @@ Changes are collected here during normal development. When the team prepares a r
 
 ### Added
 
-- Established the Java 17 and Spring Boot Maven project under the `com.group12:group-12-backend` coordinates.
-- Added an initial REST endpoint and endpoint test as the foundation for backend API development.
-- Added PostgreSQL schema and seed scripts for instruments, clients, administrators, orders, and holdings.
-- Added Python business analytics for client counts, traded instruments, instrument prices, order statuses, and yearly trade volume.
-- Added CSV data exports and PDF visualizations for business analytics results.
-- Added a Jenkins smoke-test pipeline with checkout, sanity-check, build, and test stages.
-- Added the Mermaid UML class diagram for the trading domain.
-- Added the manual semantic versioning and release workflow documentation.
-
 ### Changed
 
-- Consolidated client identity and cash balance data in the database schema.
-- Updated repository ignore rules for local environment and IDE files.
 
 ## [0.1.0] - 2026-09-22
 
@@ -38,6 +27,24 @@ Changes are collected here during normal development. When the team prepares a r
 - Consolidated client and account data models (client/account join) and updated seed scripts accordingly.
 - Exposed client counts to analytics and added environment configuration support for client components.
 
+## [1.0.0] - 2026-10-01
+
+### Added
+
+- Decoupled market data support with Alpaca integration for supported US equities.
+- Scheduled batch refreshes for bid, ask, and last-traded prices.
+- Configurable market data credentials, feeds, timeouts, refresh intervals, and supported symbols.
+- Tests and architecture documentation for the market data architecture/services.
+
+### Changed
+
+- Extended instruments to store bid, ask, last price, and market data timestamps
+- Updated instrument persistence to query tradable instruments and persist refreshed pricing.
+- Updated application configuration for scheduled market data refreshes.
+
+### Removed
+
+- Removed reliance on instrument dummy prices as the only source of current market values.
 
 ## Release Entry Template
 
