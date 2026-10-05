@@ -97,3 +97,4 @@ order-lifecycle:
         enabled: ${ORDER_LIFECYCLE_RECOVERY_ENABLED:true}
         interval: ${ORDER_LIFECYCLE_RECOVERY_INTERVAL:30s}
         submitted-age: ${ORDER_LIFECYCLE_RECOVERY_SUBMITTED_AGE:1m}
+
