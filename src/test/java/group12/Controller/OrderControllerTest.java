@@ -157,6 +157,30 @@ class OrderControllerTest {
         assertEquals(QUANTITY, submittedRequest.quantity());
     }
 
+    @Test
+    @DisplayName("POST /api/orders returns a durable rejected order with its Location header")
+    void submitOrder_whenAcceptanceRejects_returnsRejectedOrderAndLocation() throws Exception {
+        OrderEntity rejectedOrder = order(
+                ORDER_ID,
+                CLIENT_ID,
+                INSTRUMENT_ID,
+                OrderType.BUY,
+                QUANTITY
+        );
+        rejectedOrder.setStatus(OrderStatus.REJECTED);
+        when(orderService.submitOrder(any(CreateOrderRequest.class))).thenReturn(rejectedOrder);
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(orderRequestJson(CLIENT_ID, INSTRUMENT_ID, "BUY", QUANTITY)))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/orders/42"))
+                .andExpect(jsonPath("$.orderId").value(ORDER_ID))
+                .andExpect(jsonPath("$.status").value("REJECTED"));
+
+        verify(orderService).submitOrder(any(CreateOrderRequest.class));
+    }
+
 
     @Test
     @DisplayName("POST /api/orders with invalid order type returns 400 Bad Request")

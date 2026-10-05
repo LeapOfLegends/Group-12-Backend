@@ -1,6 +1,7 @@
 package group12.Services;
 
 import group12.Entities.OrderEntity;
+import group12.Entities.OrderStatus;
 import group12.Entities.OrderType;
 import group12.Repository.OrderRepository;
 import group12.dto.CreateOrderRequest;
@@ -17,9 +18,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 import java.math.BigDecimal;
+import java.util.Arrays;
 
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.inOrder;
@@ -59,6 +62,7 @@ class OrderServiceTest {
         OrderEntity acceptedOrder = order(
                 42L, 10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
         );
+        acceptedOrder.setStatus(OrderStatus.ACCEPTED);
         when(orderSubmissionService.submit(request)).thenReturn(submittedOrder);
         when(orderAcceptanceService.acceptSubmittedOrder(42L)).thenReturn(acceptedOrder);
 
@@ -68,6 +72,16 @@ class OrderServiceTest {
         orderedCalls.verify(orderSubmissionService).submit(request);
         orderedCalls.verify(orderAcceptanceService).acceptSubmittedOrder(42L);
         assertSame(acceptedOrder, result);
+        assertEquals(OrderStatus.ACCEPTED, result.getStatus());
+    }
+
+    @Test
+    @DisplayName("submitOrder has no direct execution-service dependency")
+    void submitOrder_doesNotDependOnExecutionService() {
+        boolean hasExecutionDependency = Arrays.stream(OrderService.class.getDeclaredFields())
+                .anyMatch(field -> field.getType().equals(OrderExecutionService.class));
+
+        assertFalse(hasExecutionDependency);
     }
 
     @Test

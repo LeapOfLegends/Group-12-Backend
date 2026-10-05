@@ -10,7 +10,8 @@ import java.time.Clock;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
         QuoteFreshnessProperties.class,
-        OrderExecutionProperties.class
+        OrderExecutionProperties.class,
+        OrderLifecycleRecoveryProperties.class
 })
 public class OrderLifecycleConfiguration {
 
