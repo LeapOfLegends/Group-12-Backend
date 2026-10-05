@@ -2,9 +2,10 @@ package group12.Services;
 
 import group12.dto.CreateOrderRequest;
 import group12.Entities.OrderEntity;
+import group12.Entities.OrderStatus;
 import group12.Repository.OrderRepository;
 import group12.exception.OrderNotFoundException;
-import group12.exception.OrderSubmissionException;
+import group12.exception.RetryableOrderExecutionException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +16,9 @@ import java.util.List;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final OrderSubmissionService orderSubmissionService;
+    private final OrderAcceptanceService orderAcceptanceService;
+    private final OrderExecutionService orderExecutionService;
 
     public OrderEntity getOrderById(Long orderId) {
         return orderRepository.findById(orderId)
@@ -26,20 +30,20 @@ public class OrderService {
     }
 
     public OrderEntity submitOrder(CreateOrderRequest request) {
+        OrderEntity submittedOrder = orderSubmissionService.submit(request);
+        OrderEntity acceptedOrder = orderAcceptanceService.acceptSubmittedOrder(
+                submittedOrder.getOrderId()
+        );
 
-        OrderEntity order = new OrderEntity();
-        order.setClientId(request.clientId());
-        order.setInstrumentId(request.instrumentId());
-        order.setOrderType(request.orderType());
-        order.setQuantity(request.quantity());
-
-        int rowsInserted = orderRepository.insert(order);
-
-        if (rowsInserted != 1) {
-            throw new OrderSubmissionException("Order could not be created");
+        if (acceptedOrder.getStatus() != OrderStatus.ACCEPTED) {
+            return acceptedOrder;
         }
 
-        return getOrderById(order.getOrderId());
+        try {
+            return orderExecutionService.executeAcceptedOrder(submittedOrder.getOrderId());
+        } catch (RetryableOrderExecutionException exception) {
+            return acceptedOrder;
+        }
     }
 
 }

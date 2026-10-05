@@ -4,6 +4,7 @@ import group12.Entities.OrderEntity;
 import org.apache.ibatis.annotations.*;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,12 +19,14 @@ public interface OrderRepository {
             order_type,
             quantity,
             status,
+            reserved_cash,
             submitted_at,
             accepted_at,
             rejected_at,
             failed_at,
             filled_at,
             execution_price,
+            execution_quote_as_of,
             trade_value,
             rejection_reason,
             failure_reason
@@ -41,12 +44,14 @@ public interface OrderRepository {
             order_type,
             quantity,
             status,
+            reserved_cash,
             submitted_at,
             accepted_at,
             rejected_at,
             failed_at,
             filled_at,
             execution_price,
+            execution_quote_as_of,
             trade_value,
             rejection_reason,
             failure_reason
@@ -65,12 +70,14 @@ public interface OrderRepository {
             order_type,
             quantity,
             status,
+            reserved_cash,
             submitted_at,
             accepted_at,
             rejected_at,
             failed_at,
             filled_at,
             execution_price,
+            execution_quote_as_of,
             trade_value,
             rejection_reason,
             failure_reason
@@ -106,11 +113,29 @@ public interface OrderRepository {
     @Update("""
         UPDATE orders
         SET status = 'ACCEPTED',
-            accepted_at = CURRENT_TIMESTAMP
+            accepted_at = CURRENT_TIMESTAMP,
+            reserved_cash = #{reservedCash}
         WHERE order_id = #{orderId}
           AND status = 'SUBMITTED'
+          AND order_type = 'BUY'
+          AND #{reservedCash} > 0
         """)
-    int acceptSubmittedOrder(@Param("orderId") Long orderId);
+    int acceptSubmittedBuyOrder(
+            @Param("orderId") Long orderId,
+            @Param("reservedCash") BigDecimal reservedCash
+    );
+
+
+    @Update("""
+        UPDATE orders
+        SET status = 'ACCEPTED',
+            accepted_at = CURRENT_TIMESTAMP,
+            reserved_cash = NULL
+        WHERE order_id = #{orderId}
+          AND status = 'SUBMITTED'
+          AND order_type = 'SELL'
+        """)
+    int acceptSubmittedSellOrder(@Param("orderId") Long orderId);
 
 
     @Update("""
@@ -131,13 +156,17 @@ public interface OrderRepository {
         UPDATE orders
         SET status = 'FILLED',
             execution_price = #{executionPrice},
+            execution_quote_as_of = #{executionQuoteAsOf},
             filled_at = CURRENT_TIMESTAMP
         WHERE order_id = #{orderId}
           AND status = 'ACCEPTED'
+          AND #{executionPrice} > 0
+          AND #{executionQuoteAsOf} IS NOT NULL
         """)
     int fillAcceptedOrder(
             @Param("orderId") Long orderId,
-            @Param("executionPrice") BigDecimal executionPrice
+            @Param("executionPrice") BigDecimal executionPrice,
+            @Param("executionQuoteAsOf") OffsetDateTime executionQuoteAsOf
     );
 
 
@@ -152,5 +181,53 @@ public interface OrderRepository {
     int failAcceptedOrder(
             @Param("orderId") Long orderId,
             @Param("failureReason") String failureReason
+    );
+
+
+    @Select("""
+        SELECT COALESCE(SUM(reserved_cash), 0)
+        FROM orders
+        WHERE client_id = #{clientId}
+          AND order_type = 'BUY'
+          AND status = 'ACCEPTED'
+        """)
+    BigDecimal sumActiveBuyReservedCash(@Param("clientId") Long clientId);
+
+
+    @Select("""
+        SELECT COALESCE(SUM(quantity), 0)
+        FROM orders
+        WHERE client_id = #{clientId}
+          AND instrument_id = #{instrumentId}
+          AND order_type = 'SELL'
+          AND status = 'ACCEPTED'
+        """)
+    BigDecimal sumActiveSellQuantity(
+            @Param("clientId") Long clientId,
+            @Param("instrumentId") Long instrumentId
+    );
+
+
+    @Select("""
+        SELECT order_id
+        FROM orders
+        WHERE status = 'SUBMITTED'
+          AND submitted_at < #{submittedBefore}
+        ORDER BY submitted_at, order_id
+        """)
+    List<Long> findSubmittedOrderIdsSubmittedBefore(
+            @Param("submittedBefore") OffsetDateTime submittedBefore
+    );
+
+
+    @Select("""
+        SELECT order_id
+        FROM orders
+        WHERE status = 'ACCEPTED'
+          AND accepted_at < #{acceptedBefore}
+        ORDER BY accepted_at, order_id
+        """)
+    List<Long> findAcceptedOrderIdsAcceptedBefore(
+            @Param("acceptedBefore") OffsetDateTime acceptedBefore
     );
 }

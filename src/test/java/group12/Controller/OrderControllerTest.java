@@ -135,6 +135,7 @@ class OrderControllerTest {
     void submitOrder_withValidRequest_returnsCreatedOrderAndLocation() throws Exception {
         // Arrange
         OrderEntity createdOrder = order(ORDER_ID, CLIENT_ID, INSTRUMENT_ID, OrderType.BUY, QUANTITY);
+        createdOrder.setStatus(OrderStatus.ACCEPTED);
         when(orderService.submitOrder(any(CreateOrderRequest.class))).thenReturn(createdOrder);
 
         // Act and Assert
@@ -144,7 +145,7 @@ class OrderControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/orders/42"))
                 .andExpect(jsonPath("$.orderId").value(ORDER_ID))
-                .andExpect(jsonPath("$.status").value("SUBMITTED"));
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
 
         ArgumentCaptor<CreateOrderRequest> requestCaptor =
                 ArgumentCaptor.forClass(CreateOrderRequest.class);
@@ -154,6 +155,30 @@ class OrderControllerTest {
         assertEquals(INSTRUMENT_ID, submittedRequest.instrumentId());
         assertEquals(OrderType.BUY, submittedRequest.orderType());
         assertEquals(QUANTITY, submittedRequest.quantity());
+    }
+
+    @Test
+    @DisplayName("POST /api/orders returns a durable rejected order with its Location header")
+    void submitOrder_whenAcceptanceRejects_returnsRejectedOrderAndLocation() throws Exception {
+        OrderEntity rejectedOrder = order(
+                ORDER_ID,
+                CLIENT_ID,
+                INSTRUMENT_ID,
+                OrderType.BUY,
+                QUANTITY
+        );
+        rejectedOrder.setStatus(OrderStatus.REJECTED);
+        when(orderService.submitOrder(any(CreateOrderRequest.class))).thenReturn(rejectedOrder);
+
+        mockMvc.perform(post("/api/orders")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(orderRequestJson(CLIENT_ID, INSTRUMENT_ID, "BUY", QUANTITY)))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/orders/42"))
+                .andExpect(jsonPath("$.orderId").value(ORDER_ID))
+                .andExpect(jsonPath("$.status").value("REJECTED"));
+
+        verify(orderService).submitOrder(any(CreateOrderRequest.class));
     }
 
 

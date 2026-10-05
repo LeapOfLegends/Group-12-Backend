@@ -18,12 +18,14 @@ public class OrderEntity {
     private OrderType orderType;
     private BigDecimal quantity;
     private OrderStatus status;
+    private BigDecimal reservedCash;
     private OffsetDateTime submittedAt;
     private OffsetDateTime acceptedAt;
     private OffsetDateTime rejectedAt;
     private OffsetDateTime failedAt;
     private OffsetDateTime filledAt;
     private BigDecimal executionPrice;
+    private OffsetDateTime executionQuoteAsOf;
     private BigDecimal tradeValue;
     private String rejectionReason;
     private String failureReason;

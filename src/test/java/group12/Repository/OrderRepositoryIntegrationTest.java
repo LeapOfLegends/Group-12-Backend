@@ -23,6 +23,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -84,17 +85,20 @@ class OrderRepositoryIntegrationTest {
         Long orderId = jdbcTemplate.queryForObject("""
                 INSERT INTO orders (
                     client_id, instrument_id, order_type, quantity, status,
-                    submitted_at, accepted_at, filled_at, execution_price
+                    reserved_cash, submitted_at, accepted_at, filled_at,
+                    execution_price, execution_quote_as_of
                 )
-                VALUES (?, ?, 'BUY', 4.12500000, 'FILLED', ?::timestamptz, ?::timestamptz,
-                        ?::timestamptz, 123.45678901)
+                VALUES (?, ?, 'BUY', 4.12500000, 'FILLED', 509.2592546662500000,
+                        ?::timestamptz, ?::timestamptz, ?::timestamptz,
+                        123.45678901, ?::timestamptz)
                 RETURNING order_id
                 """, Long.class,
                 firstClientId,
                 instrumentId,
                 "2026-01-02T10:15:30Z",
                 "2026-01-02T10:15:31Z",
-                "2026-01-02T10:15:35Z"
+                "2026-01-02T10:15:35Z",
+                "2026-01-02T10:15:34.123456Z"
         );
 
         // Act
@@ -110,7 +114,12 @@ class OrderRepositoryIntegrationTest {
         assertEquals(new BigDecimal("4.12500000"), order.getQuantity());
         assertEquals(OrderStatus.FILLED, order.getStatus());
         assertEquals(Instant.parse("2026-01-02T10:15:30Z"), order.getSubmittedAt().toInstant());
+        assertEquals(new BigDecimal("509.2592546662500000"), order.getReservedCash());
         assertEquals(new BigDecimal("123.45678901"), order.getExecutionPrice());
+        assertEquals(
+                Instant.parse("2026-01-02T10:15:34.123456Z"),
+                order.getExecutionQuoteAsOf().toInstant()
+        );
         assertEquals(new BigDecimal("509.2592546662500000"), order.getTradeValue());
         assertNotNull(order.getAcceptedAt());
         assertNotNull(order.getFilledAt());
@@ -231,28 +240,76 @@ class OrderRepositoryIntegrationTest {
     }
 
     @Test
-    void acceptSubmittedOrder_whenSubmitted_transitionsToAccepted() {
+    void acceptSubmittedBuyOrder_whenSubmitted_storesReservedCash() {
         Long orderId = insertOrderWithStatus(OrderStatus.SUBMITTED, 2);
 
-        int rowsAffected = orderRepository.acceptSubmittedOrder(orderId);
+        int rowsAffected = orderRepository.acceptSubmittedBuyOrder(
+                orderId,
+                new BigDecimal("246.9135780200000000")
+        );
 
         OrderEntity order = orderRepository.findById(orderId).orElseThrow();
         assertEquals(1, rowsAffected);
         assertEquals(OrderStatus.ACCEPTED, order.getStatus());
         assertNotNull(order.getAcceptedAt());
+        assertEquals(new BigDecimal("246.9135780200000000"), order.getReservedCash());
     }
 
     @Test
-    void acceptSubmittedOrder_whenAlreadyAccepted_returnsZero() {
+    void acceptSubmittedBuyOrder_whenAlreadyAccepted_returnsZero() {
         Long orderId = insertOrderWithStatus(OrderStatus.SUBMITTED, 2);
-        assertEquals(1, orderRepository.acceptSubmittedOrder(orderId));
+        assertEquals(
+                1,
+                orderRepository.acceptSubmittedBuyOrder(
+                        orderId,
+                        new BigDecimal("20.0000000000000000")
+                )
+        );
 
-        int rowsAffected = orderRepository.acceptSubmittedOrder(orderId);
+        int rowsAffected = orderRepository.acceptSubmittedBuyOrder(
+                orderId,
+                new BigDecimal("30.0000000000000000")
+        );
 
         assertEquals(0, rowsAffected);
+        OrderEntity order = orderRepository.findById(orderId).orElseThrow();
+        assertEquals(OrderStatus.ACCEPTED, order.getStatus());
+        assertEquals(new BigDecimal("20.0000000000000000"), order.getReservedCash());
+    }
+
+    @Test
+    void acceptSubmittedSellOrder_whenSubmitted_leavesReservedCashNull() {
+        Long orderId = insertOrderWithStatus(OrderType.SELL, OrderStatus.SUBMITTED, 2);
+
+        int rowsAffected = orderRepository.acceptSubmittedSellOrder(orderId);
+
+        OrderEntity order = orderRepository.findById(orderId).orElseThrow();
+        assertEquals(1, rowsAffected);
+        assertEquals(OrderStatus.ACCEPTED, order.getStatus());
+        assertNotNull(order.getAcceptedAt());
+        assertNull(order.getReservedCash());
+    }
+
+    @Test
+    void acceptancePrimitives_requireTheirMatchingOrderType() {
+        Long buyOrderId = insertOrderWithStatus(OrderType.BUY, OrderStatus.SUBMITTED, 2);
+        Long sellOrderId = insertOrderWithStatus(OrderType.SELL, OrderStatus.SUBMITTED, 2);
+
+        assertEquals(0, orderRepository.acceptSubmittedSellOrder(buyOrderId));
         assertEquals(
-                OrderStatus.ACCEPTED,
-                orderRepository.findById(orderId).orElseThrow().getStatus()
+                0,
+                orderRepository.acceptSubmittedBuyOrder(
+                        sellOrderId,
+                        new BigDecimal("20.0000000000000000")
+                )
+        );
+        assertEquals(
+                OrderStatus.SUBMITTED,
+                orderRepository.findById(buyOrderId).orElseThrow().getStatus()
+        );
+        assertEquals(
+                OrderStatus.SUBMITTED,
+                orderRepository.findById(sellOrderId).orElseThrow().getStatus()
         );
     }
 
@@ -273,20 +330,37 @@ class OrderRepositoryIntegrationTest {
     }
 
     @Test
+    void rejectSubmittedOrder_whenAccepted_returnsZero() {
+        Long orderId = insertOrderWithStatus(OrderStatus.ACCEPTED, 2);
+
+        int rowsAffected = orderRepository.rejectSubmittedOrder(orderId, "TOO_LATE");
+
+        OrderEntity order = orderRepository.findById(orderId).orElseThrow();
+        assertEquals(0, rowsAffected);
+        assertEquals(OrderStatus.ACCEPTED, order.getStatus());
+        assertNull(order.getRejectedAt());
+        assertNull(order.getRejectionReason());
+    }
+
+    @Test
     void fillAcceptedOrder_whenAccepted_persistsPriceTimestampAndGeneratedTradeValue() {
         Long orderId = insertOrderWithStatus(
                 OrderStatus.ACCEPTED, new BigDecimal("4.12500000")
         );
+        OffsetDateTime executionQuoteAsOf =
+                OffsetDateTime.parse("2026-01-02T10:15:34.123456Z");
 
         int rowsAffected = orderRepository.fillAcceptedOrder(
                 orderId,
-                new BigDecimal("12.34567890")
+                new BigDecimal("12.34567890"),
+                executionQuoteAsOf
         );
 
         OrderEntity order = orderRepository.findById(orderId).orElseThrow();
         assertEquals(1, rowsAffected);
         assertEquals(OrderStatus.FILLED, order.getStatus());
         assertEquals(new BigDecimal("12.34567890"), order.getExecutionPrice());
+        assertEquals(executionQuoteAsOf.toInstant(), order.getExecutionQuoteAsOf().toInstant());
         assertEquals(new BigDecimal("50.9259254625000000"), order.getTradeValue());
         assertNotNull(order.getFilledAt());
     }
@@ -297,7 +371,8 @@ class OrderRepositoryIntegrationTest {
 
         int rowsAffected = orderRepository.fillAcceptedOrder(
                 orderId,
-                new BigDecimal("10.0000")
+                new BigDecimal("10.0000"),
+                OffsetDateTime.parse("2026-01-02T10:15:34Z")
         );
 
         assertEquals(0, rowsAffected);
@@ -331,6 +406,146 @@ class OrderRepositoryIntegrationTest {
                 OrderStatus.SUBMITTED,
                 orderRepository.findById(orderId).orElseThrow().getStatus()
         );
+    }
+
+    @Test
+    void sumActiveBuyReservedCash_includesOnlyAcceptedBuysForClient() {
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.BUY, OrderStatus.ACCEPTED,
+                new BigDecimal("1.00000000"), new BigDecimal("10.5000000000000000")
+        );
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.BUY, OrderStatus.ACCEPTED,
+                new BigDecimal("2.00000000"), new BigDecimal("20.2500000000000000")
+        );
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.BUY, OrderStatus.FILLED,
+                new BigDecimal("3.00000000"), new BigDecimal("30.0000000000000000")
+        );
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.BUY, OrderStatus.SUBMITTED,
+                new BigDecimal("4.00000000"), null
+        );
+        insertReservationOrder(
+                secondClientId, instrumentId, OrderType.BUY, OrderStatus.ACCEPTED,
+                new BigDecimal("5.00000000"), new BigDecimal("50.0000000000000000")
+        );
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.SELL, OrderStatus.ACCEPTED,
+                new BigDecimal("6.00000000"), null
+        );
+
+        BigDecimal reservedCash = orderRepository.sumActiveBuyReservedCash(firstClientId);
+
+        assertEquals(new BigDecimal("30.7500000000000000"), reservedCash);
+        assertEquals(
+                0,
+                orderRepository.sumActiveBuyReservedCash(999L).compareTo(BigDecimal.ZERO)
+        );
+    }
+
+    @Test
+    void sumActiveSellQuantity_includesOnlyAcceptedSellsForClientAndInstrument() {
+        Long secondInstrumentId = insertInstrument("OTHER");
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.SELL, OrderStatus.ACCEPTED,
+                new BigDecimal("1.25000000"), null
+        );
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.SELL, OrderStatus.ACCEPTED,
+                new BigDecimal("2.50000000"), null
+        );
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.SELL, OrderStatus.FILLED,
+                new BigDecimal("3.00000000"), null
+        );
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.SELL, OrderStatus.SUBMITTED,
+                new BigDecimal("4.00000000"), null
+        );
+        insertReservationOrder(
+                firstClientId, instrumentId, OrderType.BUY, OrderStatus.ACCEPTED,
+                new BigDecimal("5.00000000"), new BigDecimal("50.0000000000000000")
+        );
+        insertReservationOrder(
+                firstClientId, secondInstrumentId, OrderType.SELL, OrderStatus.ACCEPTED,
+                new BigDecimal("6.00000000"), null
+        );
+        insertReservationOrder(
+                secondClientId, instrumentId, OrderType.SELL, OrderStatus.ACCEPTED,
+                new BigDecimal("7.00000000"), null
+        );
+
+        BigDecimal reservedQuantity = orderRepository.sumActiveSellQuantity(
+                firstClientId,
+                instrumentId
+        );
+
+        assertEquals(new BigDecimal("3.75000000"), reservedQuantity);
+        assertEquals(
+                0,
+                orderRepository.sumActiveSellQuantity(999L, instrumentId)
+                        .compareTo(BigDecimal.ZERO)
+        );
+    }
+
+    @Test
+    void findSubmittedOrderIdsSubmittedBefore_selectsOnlyOlderSubmittedOrders() {
+        OffsetDateTime cutoff = OffsetDateTime.parse("2026-01-02T10:00:00Z");
+        Long oldestOrderId = insertRecoveryOrder(
+                OrderStatus.SUBMITTED,
+                "2026-01-01T08:00:00Z",
+                null
+        );
+        Long olderOrderId = insertRecoveryOrder(
+                OrderStatus.SUBMITTED,
+                "2026-01-01T09:00:00Z",
+                null
+        );
+        insertRecoveryOrder(OrderStatus.SUBMITTED, cutoff.toString(), null);
+        insertRecoveryOrder(OrderStatus.SUBMITTED, "2026-01-03T08:00:00Z", null);
+        insertRecoveryOrder(OrderStatus.REJECTED, "2026-01-01T07:00:00Z", null);
+        insertRecoveryOrder(
+                OrderStatus.ACCEPTED,
+                "2026-01-01T06:00:00Z",
+                "2026-01-01T06:01:00Z"
+        );
+
+        List<Long> orderIds =
+                orderRepository.findSubmittedOrderIdsSubmittedBefore(cutoff);
+
+        assertEquals(List.of(oldestOrderId, olderOrderId), orderIds);
+    }
+
+    @Test
+    void findAcceptedOrderIdsAcceptedBefore_selectsOnlyOlderAcceptedOrders() {
+        OffsetDateTime cutoff = OffsetDateTime.parse("2026-01-02T10:00:00Z");
+        Long oldestOrderId = insertRecoveryOrder(
+                OrderStatus.ACCEPTED,
+                "2026-01-01T07:00:00Z",
+                "2026-01-01T08:00:00Z"
+        );
+        Long olderOrderId = insertRecoveryOrder(
+                OrderStatus.ACCEPTED,
+                "2026-01-01T08:00:00Z",
+                "2026-01-01T09:00:00Z"
+        );
+        insertRecoveryOrder(OrderStatus.ACCEPTED, "2026-01-01T09:00:00Z", cutoff.toString());
+        insertRecoveryOrder(
+                OrderStatus.ACCEPTED,
+                "2026-01-01T10:00:00Z",
+                "2026-01-03T08:00:00Z"
+        );
+        insertRecoveryOrder(
+                OrderStatus.FAILED,
+                "2026-01-01T05:00:00Z",
+                "2026-01-01T06:00:00Z"
+        );
+        insertRecoveryOrder(OrderStatus.SUBMITTED, "2026-01-01T04:00:00Z", null);
+
+        List<Long> orderIds = orderRepository.findAcceptedOrderIdsAcceptedBefore(cutoff);
+
+        assertEquals(List.of(oldestOrderId, olderOrderId), orderIds);
     }
 
     @Test
@@ -432,21 +647,112 @@ class OrderRepositoryIntegrationTest {
     }
 
     private Long insertOrderWithStatus(OrderStatus status, BigDecimal quantity) {
+        return insertOrderWithStatus(OrderType.BUY, status, quantity);
+    }
+
+    private Long insertOrderWithStatus(OrderType orderType, OrderStatus status, int quantity) {
+        return insertOrderWithStatus(orderType, status, BigDecimal.valueOf(quantity));
+    }
+
+    private Long insertOrderWithStatus(
+            OrderType orderType,
+            OrderStatus status,
+            BigDecimal quantity
+    ) {
+        boolean wasAccepted = status == OrderStatus.ACCEPTED
+                || status == OrderStatus.FILLED
+                || status == OrderStatus.FAILED;
+        BigDecimal reservedCash = orderType == OrderType.BUY && wasAccepted
+                ? quantity.multiply(new BigDecimal("10.00000000"))
+                : null;
+        OffsetDateTime acceptedAt = wasAccepted
+                ? OffsetDateTime.parse("2026-01-01T10:00:00Z")
+                : null;
         return jdbcTemplate.queryForObject("""
                 INSERT INTO orders (
-                    client_id, instrument_id, order_type, quantity, status
+                    client_id, instrument_id, order_type, quantity, status,
+                    reserved_cash, accepted_at
                 )
-                VALUES (?, ?, 'BUY', ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 RETURNING order_id
-                """, Long.class, firstClientId, instrumentId, quantity, status.name());
+                """, Long.class,
+                firstClientId,
+                instrumentId,
+                orderType.name(),
+                quantity,
+                status.name(),
+                reservedCash,
+                acceptedAt
+        );
+    }
+
+    private Long insertReservationOrder(
+            Long clientId,
+            Long selectedInstrumentId,
+            OrderType orderType,
+            OrderStatus status,
+            BigDecimal quantity,
+            BigDecimal reservedCash
+    ) {
+        return jdbcTemplate.queryForObject("""
+                INSERT INTO orders (
+                    client_id, instrument_id, order_type, quantity, status,
+                    reserved_cash, accepted_at
+                )
+                VALUES (
+                    ?, ?, ?, ?, ?, ?,
+                    CASE WHEN ? = 'ACCEPTED' THEN CURRENT_TIMESTAMP ELSE NULL END
+                )
+                RETURNING order_id
+                """, Long.class,
+                clientId,
+                selectedInstrumentId,
+                orderType.name(),
+                quantity,
+                status.name(),
+                reservedCash,
+                status.name()
+        );
+    }
+
+    private Long insertRecoveryOrder(
+            OrderStatus status,
+            String submittedAt,
+            String acceptedAt
+    ) {
+        return jdbcTemplate.queryForObject("""
+                INSERT INTO orders (
+                    client_id, instrument_id, order_type, quantity, status,
+                    submitted_at, accepted_at
+                )
+                VALUES (?, ?, 'SELL', 1.00000000, ?, ?::timestamptz, ?::timestamptz)
+                RETURNING order_id
+                """, Long.class,
+                firstClientId,
+                instrumentId,
+                status.name(),
+                submittedAt,
+                acceptedAt
+        );
     }
 
     private void assertNoLifecycleTransitionSucceeds(Long orderId) {
-        assertEquals(0, orderRepository.acceptSubmittedOrder(orderId));
+        assertEquals(
+                0,
+                orderRepository.acceptSubmittedBuyOrder(
+                        orderId,
+                        new BigDecimal("10.0000000000000000")
+                )
+        );
+        assertEquals(0, orderRepository.acceptSubmittedSellOrder(orderId));
         assertEquals(0, orderRepository.rejectSubmittedOrder(orderId, "REJECTED"));
         assertEquals(
                 0,
-                orderRepository.fillAcceptedOrder(orderId, new BigDecimal("10.0000"))
+                orderRepository.fillAcceptedOrder(
+                        orderId,
+                        new BigDecimal("10.0000"),
+                        OffsetDateTime.parse("2026-01-02T10:15:34Z")
+                )
         );
         assertEquals(0, orderRepository.failAcceptedOrder(orderId, "FAILED"));
     }
