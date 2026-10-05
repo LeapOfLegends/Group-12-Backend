@@ -12,9 +12,8 @@ import group12.Repository.InstrumentRepository;
 import group12.Repository.OrderRepository;
 import group12.exception.OrderLifecycleException;
 import group12.exception.RetryableOrderExecutionException;
-import group12.orderlifecycle.OrderExecutionProperties;
+import group12.orderlifecycle.OrderLifecycleProperties;
 import group12.orderlifecycle.QuoteFreshnessPolicy;
-import group12.orderlifecycle.QuoteFreshnessProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,17 +61,16 @@ class OrderExecutionServiceTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        QuoteFreshnessProperties quoteProperties = new QuoteFreshnessProperties();
-        quoteProperties.setMaxAge(Duration.ofSeconds(30));
-        OrderExecutionProperties executionProperties = new OrderExecutionProperties();
-        executionProperties.setMaxWait(Duration.ofMinutes(2));
+        OrderLifecycleProperties lifecycleProperties = new OrderLifecycleProperties();
+        lifecycleProperties.getQuote().setMaxAge(Duration.ofSeconds(30));
+        lifecycleProperties.getExecution().setMaxWait(Duration.ofMinutes(2));
         service = new OrderExecutionService(
                 orderRepository,
                 clientRepository,
                 holdingRepository,
                 instrumentRepository,
-                new QuoteFreshnessPolicy(quoteProperties, clock),
-                executionProperties,
+                new QuoteFreshnessPolicy(lifecycleProperties, clock),
+                lifecycleProperties,
                 clock
         );
     }

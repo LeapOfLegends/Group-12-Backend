@@ -54,8 +54,8 @@ class OrderLifecycleRecoverySchedulerTest {
                         () -> mock(OrderAcceptanceService.class)
                 )
                 .withBean(
-                        OrderLifecycleRecoveryProperties.class,
-                        OrderLifecycleRecoveryProperties::new
+                        OrderLifecycleProperties.class,
+                        OrderLifecycleProperties::new
                 )
                 .withBean(
                         "orderLifecycleClock",
@@ -181,8 +181,8 @@ class OrderLifecycleRecoverySchedulerTest {
             OrderAcceptanceService acceptanceService,
             Duration submittedAge
     ) {
-        OrderLifecycleRecoveryProperties properties = new OrderLifecycleRecoveryProperties();
-        properties.setSubmittedAge(submittedAge);
+        OrderLifecycleProperties properties = new OrderLifecycleProperties();
+        properties.getRecovery().setSubmittedAge(submittedAge);
         return new OrderLifecycleRecoveryScheduler(
                 repository,
                 acceptanceService,

@@ -8,11 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import java.time.Clock;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({
-        QuoteFreshnessProperties.class,
-        OrderExecutionProperties.class,
-        OrderLifecycleRecoveryProperties.class
-})
+@EnableConfigurationProperties(OrderLifecycleProperties.class)
 public class OrderLifecycleConfiguration {
 
     @Bean

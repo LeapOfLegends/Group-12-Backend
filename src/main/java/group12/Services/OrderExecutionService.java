@@ -14,7 +14,7 @@ import group12.Repository.OrderRepository;
 import group12.exception.OrderLifecycleException;
 import group12.exception.OrderNotFoundException;
 import group12.exception.RetryableOrderExecutionException;
-import group12.orderlifecycle.OrderExecutionProperties;
+import group12.orderlifecycle.OrderLifecycleProperties;
 import group12.orderlifecycle.QuoteFreshnessPolicy;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -37,7 +37,7 @@ public class OrderExecutionService {
     private final HoldingRepository holdingRepository;
     private final InstrumentRepository instrumentRepository;
     private final QuoteFreshnessPolicy quoteFreshnessPolicy;
-    private final OrderExecutionProperties executionProperties;
+    private final OrderLifecycleProperties lifecycleProperties;
     private final Clock clock;
 
     public OrderExecutionService(
@@ -46,7 +46,7 @@ public class OrderExecutionService {
             HoldingRepository holdingRepository,
             InstrumentRepository instrumentRepository,
             QuoteFreshnessPolicy quoteFreshnessPolicy,
-            OrderExecutionProperties executionProperties,
+            OrderLifecycleProperties lifecycleProperties,
             @Qualifier("orderLifecycleClock") Clock clock
     ) {
         this.orderRepository = orderRepository;
@@ -54,7 +54,7 @@ public class OrderExecutionService {
         this.holdingRepository = holdingRepository;
         this.instrumentRepository = instrumentRepository;
         this.quoteFreshnessPolicy = quoteFreshnessPolicy;
-        this.executionProperties = executionProperties;
+        this.lifecycleProperties = lifecycleProperties;
         this.clock = clock;
     }
 
@@ -239,7 +239,9 @@ public class OrderExecutionService {
         }
 
         boolean waitElapsed = !clock.instant().isBefore(
-                acceptedAt.toInstant().plus(executionProperties.getMaxWait())
+                acceptedAt.toInstant().plus(
+                        lifecycleProperties.getExecution().getMaxWait()
+                )
         );
         if (waitElapsed) {
             fail(order, OrderFailureReason.MARKET_QUOTE_TIMEOUT);

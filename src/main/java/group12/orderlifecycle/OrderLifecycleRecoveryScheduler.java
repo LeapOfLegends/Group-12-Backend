@@ -28,19 +28,19 @@ public class OrderLifecycleRecoveryScheduler {
 
     private final OrderRepository orderRepository;
     private final OrderAcceptanceService orderAcceptanceService;
-    private final OrderLifecycleRecoveryProperties recoveryProperties;
+    private final OrderLifecycleProperties lifecycleProperties;
     private final Clock clock;
     private final AtomicBoolean cycleRunning = new AtomicBoolean();
 
     public OrderLifecycleRecoveryScheduler(
             OrderRepository orderRepository,
             OrderAcceptanceService orderAcceptanceService,
-            OrderLifecycleRecoveryProperties recoveryProperties,
+            OrderLifecycleProperties lifecycleProperties,
             @Qualifier("orderLifecycleClock") Clock clock
     ) {
         this.orderRepository = orderRepository;
         this.orderAcceptanceService = orderAcceptanceService;
-        this.recoveryProperties = recoveryProperties;
+        this.lifecycleProperties = lifecycleProperties;
         this.clock = clock;
     }
 
@@ -52,7 +52,9 @@ public class OrderLifecycleRecoveryScheduler {
 
         try {
             OffsetDateTime submittedBefore = OffsetDateTime.ofInstant(
-                    clock.instant().minus(recoveryProperties.getSubmittedAge()),
+                    clock.instant().minus(
+                            lifecycleProperties.getRecovery().getSubmittedAge()
+                    ),
                     ZoneOffset.UTC
             );
             List<Long> orderIds = orderRepository

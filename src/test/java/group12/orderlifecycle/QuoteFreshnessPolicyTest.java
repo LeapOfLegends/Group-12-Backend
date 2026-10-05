@@ -20,8 +20,8 @@ class QuoteFreshnessPolicyTest {
 
     @BeforeEach
     void setUp() {
-        QuoteFreshnessProperties properties = new QuoteFreshnessProperties();
-        properties.setMaxAge(Duration.ofSeconds(30));
+        OrderLifecycleProperties properties = new OrderLifecycleProperties();
+        properties.getQuote().setMaxAge(Duration.ofSeconds(30));
         policy = new QuoteFreshnessPolicy(
                 properties,
                 Clock.fixed(NOW, ZoneOffset.UTC)

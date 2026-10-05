@@ -9,11 +9,11 @@ import java.time.OffsetDateTime;
 @Component
 public class QuoteFreshnessPolicy {
 
-    private final QuoteFreshnessProperties properties;
+    private final OrderLifecycleProperties properties;
     private final Clock clock;
 
     public QuoteFreshnessPolicy(
-            QuoteFreshnessProperties properties,
+            OrderLifecycleProperties properties,
             @Qualifier("orderLifecycleClock") Clock clock
     ) {
         this.properties = properties;
@@ -26,6 +26,6 @@ public class QuoteFreshnessPolicy {
         }
 
         return !quoteAsOf.toInstant()
-                .isBefore(clock.instant().minus(properties.getMaxAge()));
+                .isBefore(clock.instant().minus(properties.getQuote().getMaxAge()));
     }
 }
