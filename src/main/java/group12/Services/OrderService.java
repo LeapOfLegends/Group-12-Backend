@@ -1,16 +1,22 @@
 package group12.Services;
 
 import group12.dto.CreateOrderRequest;
+import group12.dto.OrderCreatedEvent;
 import group12.Entities.OrderEntity;
 import group12.Entities.OrderStatus;
 import group12.Repository.OrderRepository;
 import group12.exception.OrderNotFoundException;
 import group12.exception.RetryableOrderExecutionException;
+import group12.exception.OrderSubmissionException;
+import group12.kafka.OrderProducer;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -19,6 +25,8 @@ public class OrderService {
     private final OrderSubmissionService orderSubmissionService;
     private final OrderAcceptanceService orderAcceptanceService;
     private final OrderExecutionService orderExecutionService;
+    private final OrderProducer orderProducer;
+
 
     public OrderEntity getOrderById(Long orderId) {
         return orderRepository.findById(orderId)
@@ -44,6 +52,7 @@ public class OrderService {
         } catch (RetryableOrderExecutionException exception) {
             return acceptedOrder;
         }
+        
     }
 
 }
