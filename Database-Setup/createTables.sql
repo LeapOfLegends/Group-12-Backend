@@ -52,7 +52,8 @@ CREATE TABLE admins(
     last_name VARCHAR(100) NOT NULL,
 	email VARCHAR(255) NOT NULL UNIQUE,
 	password_hash VARCHAR(255) NOT NULL,
-	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	roles TEXT NOT NULL CHECK (role IN ('super_admin', 'finance', 'operations'))
 );
 
 CREATE TABLE orders (
