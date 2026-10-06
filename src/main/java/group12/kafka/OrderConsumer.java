@@ -1,6 +1,8 @@
 package group12.kafka;
 
+import group12.Services.OrderExecutionService;
 import group12.dto.*;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
@@ -8,42 +10,47 @@ import org.springframework.stereotype.Service;
 import static group12.config.KafkaOrderConfiguration.*;
 
 /**
- * CONSUMER: Listens to order events published by OrderService
+ * CONSUMER: Listens to order events and processes them asynchronously
  * 
  * Event Flow:
- * 1. Order SUBMITTED by client → OrderSubmissionService creates order in DB
- * 2. Order ACCEPTED by OrderAcceptanceService after validation → OrderAcceptedEvent published
- *    - Validates instrument is tradable
- *    - Validates quote freshness
- *    - Validates sufficient funds (BUY) or holdings (SELL)
- * 3. Order FILLED by OrderExecutionService after execution → OrderFilledEvent published
- *    - For BUY: Deducts cash, updates holdings, sets execution price
- *    - For SELL: Removes holdings, adds cash, sets execution price
+ * 1. OrderService publishes OrderAcceptedEvent to Kafka
+ * 2. OrderConsumer receives the event via handleOrderAccepted
+ * 3. OrderExecutionService executes the order asynchronously
+ * 4. Order status changes from ACCEPTED to FILLED
+ * 5. OrderExecutionService publishes OrderFilledEvent
+ * 6. OrderConsumer receives and logs the completion
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class OrderConsumer {
     
+    private final OrderExecutionService orderExecutionService;
+    
     /**
-     * Handles ACCEPTED orders
+     * Handles ACCEPTED orders - executes them asynchronously
      * 
      * At this point:
-     * - Order status changed from SUBMITTED → ACCEPTED
+     * - Order status is ACCEPTED
      * - All validation checks passed (instrument, quote, funds/holdings)
-     * - Order is ready for execution
      * - Reserved cash/holdings are locked
+     * 
+     * This consumer executes the order immediately after acceptance
      */
     @KafkaListener(topics = ORDER_ACCEPTED_TOPIC, groupId = "order-group")
     public void handleOrderAccepted(OrderAcceptedEvent event) {
         log.info("ORDER ACCEPTED: orderId={}, clientId={}, acceptedAt={}", 
                 event.getOrderId(), event.getClientId(), event.getAcceptedAt());
         
-        // Order passed all validation checks and is now ACCEPTED
-        // Business logic examples (currently just logging):
-        // - Could trigger automatic execution
-        // - Could update real-time dashboard showing accepted orders
-        // - Could start timer for time-in-force requirements
-        // - Could update trading UI with confirmed order
+        try {
+            log.info("Executing accepted order: orderId={}", event.getOrderId());
+            orderExecutionService.executeAcceptedOrder(event.getOrderId());
+            log.info("Order execution completed: orderId={}", event.getOrderId());
+            
+        } catch (Exception e) {
+            log.error("Error executing order: orderId={}, error={}", 
+                    event.getOrderId(), e.getMessage(), e);
+        }
     }
     
     /**

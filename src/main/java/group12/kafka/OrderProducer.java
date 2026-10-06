@@ -21,7 +21,7 @@ public class OrderProducer {
     public void publishOrderAccepted(OrderAcceptedEvent event) {
         try {
             kafkaTemplate.send(ORDER_ACCEPTED_TOPIC, String.valueOf(event.getOrderId()), event);
-            log.error("Order accepted event published - orderId: {}", event.getOrderId());
+            log.info("Order accepted event published - orderId: {}", event.getOrderId());
         } catch (Exception e) {
             log.error("Failed to publish order accepted event", e);
         }
