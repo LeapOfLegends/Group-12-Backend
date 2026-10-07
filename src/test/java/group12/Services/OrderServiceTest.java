@@ -44,7 +44,7 @@ class OrderServiceTest {
     private OrderAcceptanceService orderAcceptanceService;
     @Mock
     private OrderExecutionService orderExecutionService;
-    @Mock
+
     private OrderService orderService;
 
     @BeforeEach
