@@ -5,7 +5,6 @@ import group12.Entities.OrderStatus;
 import group12.Entities.OrderType;
 import group12.Repository.OrderRepository;
 import group12.kafka.OrderProducer;
-
 import group12.dto.CreateOrderRequest;
 import group12.exception.OrderNotFoundException;
 import group12.exception.RetryableOrderExecutionException;
@@ -45,7 +44,7 @@ class OrderServiceTest {
     private OrderAcceptanceService orderAcceptanceService;
     @Mock
     private OrderExecutionService orderExecutionService;
-
+    @Mock
     private OrderService orderService;
 
     @BeforeEach
@@ -54,8 +53,7 @@ class OrderServiceTest {
                 orderRepository,
                 orderProducer,
                 orderSubmissionService,
-                orderAcceptanceService,
-                orderExecutionService
+                orderAcceptanceService
         );
     }
 
