@@ -73,7 +73,7 @@ stages{
         stage('Docker Build') {
     steps {
         sh 'docker build -t capstone-backend:${BUILD_NUMBER} .'
-        sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:1.0.0'
+        sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:1.1.0'
         }
     }
     stage('Deploy to VM') {
@@ -84,7 +84,7 @@ stages{
                 sh '''
                     docker stop capstone-backend || true
                     docker rm capstone-backend || true
-                    docker run -d --name capstone-backend -p 8081:8081 capstone-backend:1.0.0
+                    docker run -d --name capstone-backend -p 8081:8081 capstone-backend:1.1.0
                 '''
             }
         }
