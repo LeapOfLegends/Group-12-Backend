@@ -25,6 +25,8 @@ import org.springframework.web.server.ResponseStatusException;
 import group12.Entities.ClientEntity;
 import group12.Repository.ClientRepository;
 import group12.dto.ClientDTO;
+import group12.dto.BalanceTransactionType;
+import group12.dto.MoneyMovementDTO;
 import group12.exception.ClientNotFoundException;
 import group12.exception.ClientSubmissionException;
 import group12.exception.DuplicateResourceException;
@@ -207,7 +209,7 @@ class ClientServiceTest {
         when(clientRepository.findByIdForUpdate(12L)).thenReturn(existing);
         when(clientRepository.updateAccountBalance(12L, new BigDecimal("125.50"))).thenReturn(1);
 
-        var result = clientService.deposit(12L, new BigDecimal("25.50"));
+        var result = clientService.transact(12L, transaction(BalanceTransactionType.DEPOSIT, "25.50"));
 
         assertEquals(12L, result.getClientId());
         assertEquals(new BigDecimal("125.50"), result.getAccountBalance());
@@ -221,7 +223,7 @@ class ClientServiceTest {
         when(clientRepository.findByIdForUpdate(12L)).thenReturn(existing);
         when(clientRepository.updateAccountBalance(12L, new BigDecimal("60.00"))).thenReturn(1);
 
-        var result = clientService.withdraw(12L, new BigDecimal("40.00"));
+        var result = clientService.transact(12L, transaction(BalanceTransactionType.WITHDRAWAL, "40.00"));
 
         assertEquals(new BigDecimal("60.00"), result.getAccountBalance());
         verify(clientRepository).updateAccountBalance(12L, new BigDecimal("60.00"));
@@ -229,9 +231,9 @@ class ClientServiceTest {
 
     @Test
     void moneyMovement_whenAmountIsNullZeroOrNegative_rejectsWithoutRepositoryAccess() {
-        assertThrows(IllegalArgumentException.class, () -> clientService.deposit(12L, null));
-        assertThrows(IllegalArgumentException.class, () -> clientService.deposit(12L, BigDecimal.ZERO));
-        assertThrows(IllegalArgumentException.class, () -> clientService.withdraw(12L, new BigDecimal("-1.00")));
+        assertThrows(IllegalArgumentException.class, () -> clientService.transact(12L, transaction(BalanceTransactionType.DEPOSIT, null)));
+        assertThrows(IllegalArgumentException.class, () -> clientService.transact(12L, transaction(BalanceTransactionType.DEPOSIT, "0.00")));
+        assertThrows(IllegalArgumentException.class, () -> clientService.transact(12L, transaction(BalanceTransactionType.WITHDRAWAL, "-1.00")));
 
         verify(clientRepository, never()).findByIdForUpdate(12L);
         verify(clientRepository, never()).updateAccountBalance(any(Long.class), any(BigDecimal.class));
@@ -243,7 +245,7 @@ class ClientServiceTest {
 
         ClientNotFoundException exception = assertThrows(
                 ClientNotFoundException.class,
-                () -> clientService.deposit(12L, new BigDecimal("10.00"))
+                () -> clientService.transact(12L, transaction(BalanceTransactionType.DEPOSIT, "10.00"))
         );
 
         assertEquals("Client not found with id: 12", exception.getMessage());
@@ -257,7 +259,7 @@ class ClientServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> clientService.withdraw(12L, new BigDecimal("100.01"))
+                () -> clientService.transact(12L, transaction(BalanceTransactionType.WITHDRAWAL, "100.01"))
         );
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
@@ -273,7 +275,7 @@ class ClientServiceTest {
 
         assertThrows(
                 IllegalStateException.class,
-                () -> clientService.deposit(12L, new BigDecimal("10.00"))
+                () -> clientService.transact(12L, transaction(BalanceTransactionType.DEPOSIT, "10.00"))
         );
 
         verify(clientRepository, never()).updateAccountBalance(any(Long.class), any(BigDecimal.class));
@@ -287,8 +289,16 @@ class ClientServiceTest {
 
         assertThrows(
                 IllegalStateException.class,
-                () -> clientService.deposit(12L, new BigDecimal("10.00"))
+                () -> clientService.transact(12L, transaction(BalanceTransactionType.DEPOSIT, "10.00"))
         );
+    }
+
+    @Test
+    void moneyMovement_whenTransactionTypeIsMissing_rejectsWithoutRepositoryAccess() {
+        assertThrows(IllegalArgumentException.class, () -> clientService.transact(12L, transaction(null, "10.00")));
+
+        verify(clientRepository, never()).findByIdForUpdate(12L);
+        verify(clientRepository, never()).updateAccountBalance(any(Long.class), any(BigDecimal.class));
     }
 
     @Test
@@ -326,5 +336,12 @@ class ClientServiceTest {
         client.setPhoneNumber("555-123-4567");
         client.setAccountBalance(new BigDecimal("100.00"));
         return client;
+    }
+
+    private static MoneyMovementDTO transaction(BalanceTransactionType type, String amount) {
+        MoneyMovementDTO transaction = new MoneyMovementDTO();
+        transaction.setType(type);
+        transaction.setAmount(amount == null ? null : new BigDecimal(amount));
+        return transaction;
     }
 }

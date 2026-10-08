@@ -17,6 +17,9 @@ import group12.Entities.ClientEntity;
 import group12.Services.ClientService;
 import group12.dto.ClientDTO;
 import group12.dto.ClientUpdateDTO;
+import group12.dto.AccountBalanceDTO;
+import group12.dto.BalanceTransactionType;
+import group12.dto.MoneyMovementDTO;
 
 class ClientControllerTest {
 
@@ -82,6 +85,33 @@ class ClientControllerTest {
             clientController.getClientById(99L);
         });
     }
+
+    @Test
+    void getAccountBalance_returnsBalanceSummary() {
+        AccountBalanceDTO balance = new AccountBalanceDTO(1L, new BigDecimal("75.00"));
+        when(clientService.getAccountBalance(1L)).thenReturn(balance);
+
+        ResponseEntity<AccountBalanceDTO> response = clientController.getAccountBalance(1L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(1L, response.getBody().getClientId());
+        assertEquals(new BigDecimal("75.00"), response.getBody().getAccountBalance());
+    }
+
+    @Test
+    void transact_usesOneRequestForDepositOrWithdrawal() {
+        MoneyMovementDTO request = new MoneyMovementDTO();
+        request.setType(BalanceTransactionType.WITHDRAWAL);
+        request.setAmount(new BigDecimal("20.00"));
+        AccountBalanceDTO updatedBalance = new AccountBalanceDTO(1L, new BigDecimal("80.00"));
+        when(clientService.transact(1L, request)).thenReturn(updatedBalance);
+
+        ResponseEntity<AccountBalanceDTO> response = clientController.transact(1L, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(new BigDecimal("80.00"), response.getBody().getAccountBalance());
+    }
+
     @Test
     void updateClient_shouldReturn200_whenClientExists() {
         ClientUpdateDTO request = new ClientUpdateDTO();

@@ -9,6 +9,8 @@ import group12.Repository.ClientRepository;
 import group12.dto.ClientDTO;
 import group12.dto.ClientUpdateDTO;
 import group12.dto.AccountBalanceDTO;
+import group12.dto.BalanceTransactionType;
+import group12.dto.MoneyMovementDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -74,16 +76,11 @@ public class ClientService {
     }
 
     @Transactional
-    public AccountBalanceDTO deposit(Long clientId, BigDecimal amount) {
-        return changeBalance(clientId, amount, true);
-    }
-
-    @Transactional
-    public AccountBalanceDTO withdraw(Long clientId, BigDecimal amount) {
-        return changeBalance(clientId, amount, false);
-    }
-
-    private AccountBalanceDTO changeBalance(Long clientId, BigDecimal amount, boolean deposit) {
+    public AccountBalanceDTO transact(Long clientId, MoneyMovementDTO transaction) {
+        if (transaction == null || transaction.getType() == null) {
+            throw new IllegalArgumentException("Transaction type is required");
+        }
+        BigDecimal amount = transaction.getAmount();
         if (amount == null || amount.signum() <= 0) {
             throw new IllegalArgumentException("Amount must be greater than zero");
         }
@@ -96,6 +93,7 @@ public class ClientService {
         if (balance == null) {
             throw new IllegalStateException("Client account balance is not set");
         }
+        boolean deposit = transaction.getType() == BalanceTransactionType.DEPOSIT;
         if (!deposit && balance.compareTo(amount) < 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Insufficient funds");
         }
