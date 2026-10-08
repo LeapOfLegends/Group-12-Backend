@@ -15,7 +15,7 @@ import java.util.Optional;
 public interface InstrumentRepository {
 
     @Select("""
-        SELECT instrument_id, symbol, instrument_name, asset_class,
+        SELECT instrument_id, market_id, symbol, instrument_name, asset_class,
                currency, is_tradable AS tradable, bid_price, ask_price, last_price,
                quote_as_of, last_trade_as_of
         FROM instruments
@@ -24,7 +24,7 @@ public interface InstrumentRepository {
     List<InstrumentEntity> findAll();
 
     @Select("""
-        SELECT instrument_id, symbol, instrument_name, asset_class,
+        SELECT instrument_id, market_id, symbol, instrument_name, asset_class,
                currency, is_tradable AS tradable, bid_price, ask_price, last_price,
                quote_as_of, last_trade_as_of
         FROM instruments
@@ -34,7 +34,7 @@ public interface InstrumentRepository {
     List<InstrumentEntity> findTradableInstruments();
 
     @Select("""
-        SELECT instrument_id, symbol, instrument_name, asset_class,
+        SELECT instrument_id, market_id, symbol, instrument_name, asset_class,
                currency, is_tradable AS tradable, bid_price, ask_price, last_price,
                quote_as_of, last_trade_as_of
         FROM instruments
@@ -43,7 +43,7 @@ public interface InstrumentRepository {
     Optional<InstrumentEntity> findById(@Param("instrumentId") Long instrumentId);
 
     @Select("""
-        SELECT instrument_id, symbol, instrument_name, asset_class,
+        SELECT instrument_id, market_id, symbol, instrument_name, asset_class,
                currency, is_tradable AS tradable, bid_price, ask_price, last_price,
                quote_as_of, last_trade_as_of
         FROM instruments

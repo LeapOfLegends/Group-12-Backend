@@ -27,6 +27,7 @@ class InstrumentServiceTest {
         OffsetDateTime lastTradeAsOf = OffsetDateTime.parse("2026-09-28T10:00:01-05:00");
         InstrumentEntity entity = new InstrumentEntity(
                 1L,
+                1L,
                 "AAPL",
                 "Apple Inc.",
                 "Equity",
