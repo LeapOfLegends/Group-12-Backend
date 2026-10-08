@@ -53,7 +53,7 @@ CREATE TABLE admins(
 	email VARCHAR(255) NOT NULL UNIQUE,
 	password_hash VARCHAR(255) NOT NULL,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	roles TEXT NOT NULL CHECK (role IN ('super_admin', 'finance', 'operations')),
+	roles TEXT NOT NULL CHECK (roles IN ('super_admin', 'finance', 'operations')),
     is_active BOOLEAN NOT NULL DEFAULT true,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
