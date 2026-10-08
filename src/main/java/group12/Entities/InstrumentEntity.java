@@ -15,6 +15,7 @@ import java.time.OffsetDateTime;
 public class InstrumentEntity {
 
         private Long instrumentId;
+        private Long marketId;
         private String symbol;
         private String instrumentName;
         private String assetClass;

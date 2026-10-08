@@ -67,14 +67,133 @@ class FinancialSchemaIntegrationTest {
 
     private Long clientId;
     private Long instrumentId;
+    private Long marketId;
 
     @BeforeEach
     void setUp() {
         jdbcTemplate.execute(
-                "TRUNCATE TABLE holdings, orders, clients, instruments RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE holdings, orders, clients, instruments, markets "
+                        + "RESTART IDENTITY CASCADE"
+        );
+        marketId = jdbcTemplate.queryForObject(
+                "INSERT INTO markets (market_code, market_status) "
+                        + "VALUES ('IEX', 'CLOSED') RETURNING market_id",
+                Long.class
         );
         clientId = insertClient();
-        instrumentId = insertInstrument("NULLS");
+        instrumentId = insertInstrument("NULLS", marketId);
+    }
+
+    @Test
+    void instrumentRepository_mapsMarketIdAcrossAllSelectQueries() {
+        assertEquals(
+                marketId,
+                instrumentRepository.findById(instrumentId).orElseThrow().getMarketId()
+        );
+        assertEquals(
+                marketId,
+                instrumentRepository.findBySymbol("NULLS").orElseThrow().getMarketId()
+        );
+        assertEquals(marketId, instrumentRepository.findAll().getFirst().getMarketId());
+        assertEquals(
+                marketId,
+                instrumentRepository.findTradableInstruments().getFirst().getMarketId()
+        );
+    }
+
+    @Test
+    void instrument_marketIdCanRemainNullForUnmappedLegacyInstruments() {
+        Long legacyInstrumentId = insertInstrument("LEGACY", null);
+
+        assertNull(
+                instrumentRepository.findById(legacyInstrumentId).orElseThrow().getMarketId()
+        );
+    }
+
+    @Test
+    void instrument_unknownMarketIdIsRejected() {
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> insertInstrument("UNKNOWN", Long.MAX_VALUE)
+        );
+    }
+
+    @Test
+    void market_nonCryptoDefaultsClosedAndStatusAsOfIsNullable() {
+        Long lseMarketId = jdbcTemplate.queryForObject(
+                "INSERT INTO markets (market_code) VALUES ('LSE') RETURNING market_id",
+                Long.class
+        );
+
+        assertEquals(
+                "CLOSED",
+                jdbcTemplate.queryForObject(
+                        "SELECT market_status FROM markets WHERE market_id = ?",
+                        String.class,
+                        lseMarketId
+                )
+        );
+        assertNull(jdbcTemplate.queryForObject(
+                "SELECT status_as_of FROM markets WHERE market_id = ?",
+                OffsetDateTime.class,
+                marketId
+        ));
+    }
+
+    @Test
+    void market_cryptoMustBeOpen() {
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update(
+                        "INSERT INTO markets (market_code) VALUES (?)",
+                        "CRYPTO"
+                )
+        );
+
+        assertEquals(
+                1,
+                jdbcTemplate.update(
+                        "INSERT INTO markets (market_code, market_status) VALUES (?, ?)",
+                        "CRYPTO",
+                        "OPEN"
+                )
+        );
+    }
+
+    @Test
+    void market_invalidCodeIsRejected() {
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update(
+                        "INSERT INTO markets (market_code, market_status) VALUES (?, ?)",
+                        "NASDAQ",
+                        "CLOSED"
+                )
+        );
+    }
+
+    @Test
+    void market_invalidStatusIsRejected() {
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update(
+                        "INSERT INTO markets (market_code, market_status) VALUES (?, ?)",
+                        "LSE",
+                        "HALTED"
+                )
+        );
+    }
+
+    @Test
+    void market_duplicateCodeIsRejected() {
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> jdbcTemplate.update(
+                        "INSERT INTO markets (market_code, market_status) VALUES (?, ?)",
+                        "IEX",
+                        "CLOSED"
+                )
+        );
     }
 
     @Test
@@ -494,14 +613,14 @@ class FinancialSchemaIntegrationTest {
                 """, Long.class);
     }
 
-    private Long insertInstrument(String symbol) {
+    private Long insertInstrument(String symbol, Long assignedMarketId) {
         return jdbcTemplate.queryForObject("""
                 INSERT INTO instruments (
-                    symbol, instrument_name, asset_class, currency, is_tradable
+                    symbol, instrument_name, asset_class, currency, is_tradable, market_id
                 )
-                VALUES (?, 'Test Instrument', 'Equity', 'USD', TRUE)
+                VALUES (?, 'Test Instrument', 'Equity', 'USD', TRUE, ?)
                 RETURNING instrument_id
-                """, Long.class, symbol);
+                """, Long.class, symbol, assignedMarketId);
     }
 
     private HoldingEntity holding(BigDecimal quantity) {
