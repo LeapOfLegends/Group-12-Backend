@@ -42,7 +42,6 @@ public class ClientController {
         return ResponseEntity.ok(client);
     }
 
-    //TODO: maybe rename this?
     @GetMapping("/{clientId}/balance")
     public ResponseEntity<AccountBalanceDTO> getAccountBalance(@PathVariable Long clientId) {
         return ResponseEntity.ok(clientService.getAccountBalance(clientId));
@@ -71,20 +70,12 @@ public class ClientController {
         return ResponseEntity.ok(client);
     }
 
-    @PostMapping("/{clientId}/deposit")
-    public ResponseEntity<AccountBalanceDTO> deposit(
+    @PostMapping("/{clientId}/balance/transactions")
+    public ResponseEntity<AccountBalanceDTO> transact(
             @PathVariable Long clientId,
             @Valid @RequestBody MoneyMovementDTO request
     ) {
-        return ResponseEntity.ok(clientService.deposit(clientId, request.getAmount()));
-    }
-
-    @PostMapping("/{clientId}/withdraw")
-    public ResponseEntity<AccountBalanceDTO> withdraw(
-            @PathVariable Long clientId,
-            @Valid @RequestBody MoneyMovementDTO request
-    ) {
-        return ResponseEntity.ok(clientService.withdraw(clientId, request.getAmount()));
+        return ResponseEntity.ok(clientService.transact(clientId, request));
     }
 
     @DeleteMapping("/{clientId}")
