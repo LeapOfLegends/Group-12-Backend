@@ -24,6 +24,8 @@ os.makedirs("exports/visualizations", exist_ok=True)
 
 # FUNCTIONS TO QUERY DATABASE AND EXPORT RESULTS AS CSV
 
+#client queries
+
 #query total count of clients from data warehouse over each year
 def get_client_counts(engine):
     client_counts_df = pd.read_sql(""" 
@@ -39,6 +41,30 @@ def get_client_counts(engine):
     except Exception as e:
         print(f"✗ Error saving client_counts_by_year.csv: {e}")
     return client_counts_df
+
+#get client portfolio value over time from data warehouse
+def get_client_portfolio_value(engine, client_id):
+    portfolio_df = pd.read_sql(f"""
+                        SELECT 
+                            holdings_updated AS date,
+                            account_balance,
+                            SUM(holding_quantity * instrument_last_price) AS holdings_value,
+                            account_balance + COALESCE(SUM(holding_quantity * instrument_last_price), 0) AS total_portfolio_value
+                        FROM dw.table_records
+                        WHERE client_id = {client_id} AND holdings_updated IS NOT NULL
+                        GROUP BY holdings_updated, account_balance
+                        ORDER BY holdings_updated;
+                        """, engine)
+    print(f"Client {client_id} portfolio shape: {portfolio_df.shape}")
+    try:
+        portfolio_df.to_csv(f"exports/records/client_{client_id}_portfolio.csv", index=False)
+        print(f"✓ Saved client_{client_id}_portfolio.csv")
+    except Exception as e:
+        print(f"✗ Error saving portfolio CSV: {e}")
+    return portfolio_df
+
+
+#finance queries
 
 #get the most traded instruments from data warehouse
 def get_most_traded_instruments(engine):
@@ -73,6 +99,8 @@ def get_top_instruments_by_price(engine):
     except Exception as e:
         print(f"✗ Error saving top_instruments_by_price.csv: {e}")
     return top_instruments_df
+
+#operations queries
 
 #get order status metrics from data warehouse (i.e. Accepted, Rejected, etc.)
 def get_order_status(engine):
@@ -119,6 +147,7 @@ def get_trade_volume(engine):
 
 # *VISUALIZATIONS*
 
+#client visualizations
 
 # *LINE GRAPH OF CLIENT COUNTS BY YEAR*
 client_by_year = get_client_counts(engine)
@@ -134,6 +163,27 @@ fig.savefig("exports/visualizations/client_counts_by_year.pdf")
 # plt.show()  # Disabled for headless environment
 
 
+# *LINE CHART OF CLIENT PORTFOLIO VALUE OVER TIME*
+client_id = 1001  # Replace with desired client ID
+client_portfolio = get_client_portfolio_value(engine, client_id)
+
+if not client_portfolio.empty:
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.lineplot(data=client_portfolio, x="date", y="total_portfolio_value", ax=ax, marker='o', linewidth=2)
+    ax.set_title(f"Portfolio Value Over Time - Client {client_id}")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Total Portfolio Value ($)")
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    
+    #export chart as pdf in exports folder
+    fig.savefig(f"exports/visualizations/client_{client_id}_portfolio_value.pdf")
+    # plt.show()  # Disabled for headless environment
+else:
+    print(f"No portfolio data found for client {client_id}")
+    
+    
+#finance visualizations
 
 # *BAR PLOT OF MOST TRADED INSTRUMENTS*
 most_traded_instruments = get_most_traded_instruments(engine)
@@ -149,6 +199,9 @@ ax.set_title("Most Traded Instruments")
 fig.savefig("exports/visualizations/most_traded_instruments.pdf")
 # plt.show()  # Disabled for headless environment
 
+
+
+#operations visualizations
 
 
 # *DONUT CHART OF ORDER STATUS*
