@@ -1,18 +1,24 @@
+CREATE TABLE markets (
+    market_id BIGSERIAL PRIMARY KEY,
+    market_code TEXT NOT NULL CONSTRAINT uq_markets_market_code UNIQUE CONSTRAINT chk_markets_market_code CHECK (market_code IN ('IEX', 'LSE', 'NSE', 'BSE', 'FX', 'CRYPTO')),
+    market_status TEXT NOT NULL DEFAULT 'CLOSED' CONSTRAINT chk_markets_market_status CHECK (market_status IN ('OPEN', 'CLOSED')),
+    status_as_of TIMESTAMPTZ,
+    CONSTRAINT chk_markets_crypto_open CHECK (market_code <> 'CRYPTO' OR market_status = 'OPEN')
+);
+
 CREATE TABLE instruments (
     instrument_id BIGSERIAL PRIMARY KEY,
+    market_id BIGINT CONSTRAINT fk_instruments_market REFERENCES markets(market_id),
     symbol VARCHAR(20) NOT NULL,
     instrument_name VARCHAR(100) NOT NULL,
     asset_class VARCHAR(100) NOT NULL,
     currency VARCHAR(3) NOT NULL,
     is_tradable BOOLEAN NOT NULL,
-    bid_price NUMERIC(20,8),
-    ask_price NUMERIC(20,8),
-    last_price NUMERIC(20,8),
+    bid_price NUMERIC(20,8) CONSTRAINT chk_instruments_bid_price_positive CHECK (bid_price IS NULL OR bid_price > 0),
+    ask_price NUMERIC(20,8) CONSTRAINT chk_instruments_ask_price_positive CHECK (ask_price IS NULL OR ask_price > 0),
+    last_price NUMERIC(20,8) CONSTRAINT chk_instruments_last_price_positive CHECK (last_price IS NULL OR last_price > 0),
     quote_as_of TIMESTAMPTZ,
     last_trade_as_of TIMESTAMPTZ,
-    CONSTRAINT chk_instruments_bid_price_positive CHECK (bid_price IS NULL OR bid_price > 0),
-    CONSTRAINT chk_instruments_ask_price_positive CHECK (ask_price IS NULL OR ask_price > 0),
-    CONSTRAINT chk_instruments_last_price_positive CHECK (last_price IS NULL OR last_price > 0),
     CONSTRAINT chk_instruments_quote_snapshot CHECK (
         (bid_price IS NULL AND ask_price IS NULL AND quote_as_of IS NULL)
         OR (bid_price IS NOT NULL AND ask_price IS NOT NULL AND quote_as_of IS NOT NULL)
