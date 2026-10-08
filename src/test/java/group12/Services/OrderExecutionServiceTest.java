@@ -12,14 +12,15 @@ import group12.Repository.InstrumentRepository;
 import group12.Repository.OrderRepository;
 import group12.exception.OrderLifecycleException;
 import group12.exception.RetryableOrderExecutionException;
+import group12.kafka.OrderProducer;
 import group12.orderlifecycle.OrderLifecycleProperties;
 import group12.orderlifecycle.QuoteFreshnessPolicy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
-import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -55,6 +56,8 @@ class OrderExecutionServiceTest {
     private HoldingRepository holdingRepository;
     @Mock
     private InstrumentRepository instrumentRepository;
+    @Mock
+    private OrderProducer orderProducer;
 
     private OrderExecutionService service;
 
@@ -71,7 +74,8 @@ class OrderExecutionServiceTest {
                 instrumentRepository,
                 new QuoteFreshnessPolicy(lifecycleProperties, clock),
                 lifecycleProperties,
-                clock
+                clock,
+                orderProducer
         );
     }
 
