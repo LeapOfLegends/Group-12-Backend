@@ -33,16 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @Testcontainers(disabledWithoutDocker = true)
-@EmbeddedKafka(
-        partitions = 1,
-        brokerProperties = {
-            "listeners=PLAINTEXT://localhost:9093",
-            "port=9093"
-        }
-)
-@TestPropertySource(properties = {
-    "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}"
-})
+@EmbeddedKafka(partitions = 1)
 class OrderExecutionIntegrationTest {
 
     @Container
