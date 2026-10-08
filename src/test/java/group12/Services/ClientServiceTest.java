@@ -19,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import group12.Entities.ClientEntity;
 import group12.Repository.ClientRepository;
@@ -197,6 +199,96 @@ class ClientServiceTest {
 
         assertTrue(result);
         verify(clientRepository).update(updated);
+    }
+
+    @Test
+    void deposit_whenAmountIsPositive_creditsBalanceAndReturnsUpdatedBalance() {
+        ClientEntity existing = client(12L, "Ava", "Martinez", "ava@example.com");
+        when(clientRepository.findByIdForUpdate(12L)).thenReturn(existing);
+        when(clientRepository.updateAccountBalance(12L, new BigDecimal("125.50"))).thenReturn(1);
+
+        var result = clientService.deposit(12L, new BigDecimal("25.50"));
+
+        assertEquals(12L, result.getClientId());
+        assertEquals(new BigDecimal("125.50"), result.getAccountBalance());
+        verify(clientRepository).findByIdForUpdate(12L);
+        verify(clientRepository).updateAccountBalance(12L, new BigDecimal("125.50"));
+    }
+
+    @Test
+    void withdraw_whenAmountIsWithinBalance_debitsBalanceAndReturnsUpdatedBalance() {
+        ClientEntity existing = client(12L, "Ava", "Martinez", "ava@example.com");
+        when(clientRepository.findByIdForUpdate(12L)).thenReturn(existing);
+        when(clientRepository.updateAccountBalance(12L, new BigDecimal("60.00"))).thenReturn(1);
+
+        var result = clientService.withdraw(12L, new BigDecimal("40.00"));
+
+        assertEquals(new BigDecimal("60.00"), result.getAccountBalance());
+        verify(clientRepository).updateAccountBalance(12L, new BigDecimal("60.00"));
+    }
+
+    @Test
+    void moneyMovement_whenAmountIsNullZeroOrNegative_rejectsWithoutRepositoryAccess() {
+        assertThrows(IllegalArgumentException.class, () -> clientService.deposit(12L, null));
+        assertThrows(IllegalArgumentException.class, () -> clientService.deposit(12L, BigDecimal.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> clientService.withdraw(12L, new BigDecimal("-1.00")));
+
+        verify(clientRepository, never()).findByIdForUpdate(12L);
+        verify(clientRepository, never()).updateAccountBalance(any(Long.class), any(BigDecimal.class));
+    }
+
+    @Test
+    void moneyMovement_whenClientDoesNotExist_throwsNotFound() {
+        when(clientRepository.findByIdForUpdate(12L)).thenReturn(null);
+
+        ClientNotFoundException exception = assertThrows(
+                ClientNotFoundException.class,
+                () -> clientService.deposit(12L, new BigDecimal("10.00"))
+        );
+
+        assertEquals("Client not found with id: 12", exception.getMessage());
+        verify(clientRepository, never()).updateAccountBalance(any(Long.class), any(BigDecimal.class));
+    }
+
+    @Test
+    void withdraw_whenAmountExceedsBalance_returnsConflictWithoutUpdatingBalance() {
+        ClientEntity existing = client(12L, "Ava", "Martinez", "ava@example.com");
+        when(clientRepository.findByIdForUpdate(12L)).thenReturn(existing);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> clientService.withdraw(12L, new BigDecimal("100.01"))
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("Insufficient funds", exception.getReason());
+        verify(clientRepository, never()).updateAccountBalance(any(Long.class), any(BigDecimal.class));
+    }
+
+    @Test
+    void moneyMovement_whenBalanceIsNull_failsWithoutUpdatingBalance() {
+        ClientEntity existing = client(12L, "Ava", "Martinez", "ava@example.com");
+        existing.setAccountBalance(null);
+        when(clientRepository.findByIdForUpdate(12L)).thenReturn(existing);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> clientService.deposit(12L, new BigDecimal("10.00"))
+        );
+
+        verify(clientRepository, never()).updateAccountBalance(any(Long.class), any(BigDecimal.class));
+    }
+
+    @Test
+    void moneyMovement_whenBalanceUpdateDoesNotAffectOneRow_fails() {
+        ClientEntity existing = client(12L, "Ava", "Martinez", "ava@example.com");
+        when(clientRepository.findByIdForUpdate(12L)).thenReturn(existing);
+        when(clientRepository.updateAccountBalance(12L, new BigDecimal("110.00"))).thenReturn(0);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> clientService.deposit(12L, new BigDecimal("10.00"))
+        );
     }
 
     @Test

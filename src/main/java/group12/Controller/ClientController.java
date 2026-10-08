@@ -16,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 import group12.Entities.ClientEntity;
 import group12.Services.ClientService;
 import group12.dto.ClientDTO;
+import group12.dto.ClientUpdateDTO;
+import group12.dto.MoneyMovementDTO;
+import group12.dto.AccountBalanceDTO;
 import jakarta.validation.Valid;
 
 @RestController
@@ -39,6 +42,12 @@ public class ClientController {
         return ResponseEntity.ok(client);
     }
 
+    //TODO: maybe rename this?
+    @GetMapping("/{clientId}/balance")
+    public ResponseEntity<AccountBalanceDTO> getAccountBalance(@PathVariable Long clientId) {
+        return ResponseEntity.ok(clientService.getAccountBalance(clientId));
+    }
+
     @GetMapping("/email/{email}")
     public ResponseEntity<ClientEntity> getClientByEmail(@PathVariable String email) {
         ClientEntity client = clientService.getClientByEmail(email);
@@ -53,13 +62,29 @@ public class ClientController {
     }
 
     @PutMapping("/{clientId}")
-    public ResponseEntity<ClientEntity> updateClient(@PathVariable Long clientId, @Valid @RequestBody ClientDTO clientDTO) {
+    public ResponseEntity<ClientEntity> updateClient(@PathVariable Long clientId, @Valid @RequestBody ClientUpdateDTO clientDTO) {
         ClientEntity client = clientService.toEntity(clientDTO);
         boolean updated = clientService.updateClient(clientId, client);
         if (!updated) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         return ResponseEntity.ok(client);
+    }
+
+    @PostMapping("/{clientId}/deposit")
+    public ResponseEntity<AccountBalanceDTO> deposit(
+            @PathVariable Long clientId,
+            @Valid @RequestBody MoneyMovementDTO request
+    ) {
+        return ResponseEntity.ok(clientService.deposit(clientId, request.getAmount()));
+    }
+
+    @PostMapping("/{clientId}/withdraw")
+    public ResponseEntity<AccountBalanceDTO> withdraw(
+            @PathVariable Long clientId,
+            @Valid @RequestBody MoneyMovementDTO request
+    ) {
+        return ResponseEntity.ok(clientService.withdraw(clientId, request.getAmount()));
     }
 
     @DeleteMapping("/{clientId}")
