@@ -1086,56 +1086,56 @@ insert into clients (first_name, last_name, email, password_hash, ssn, phone_num
 insert into clients (first_name, last_name, email, password_hash, ssn, phone_number, account_balance, created_at, date_of_birth) values ('Lucien', 'Beaglehole', 'lbeagleholedv@qq.com', '$2a$04$fCqfDovXPuHxH8j70VSbZ.ArlKk1921QRLpwbn9hFfrHWfI9TR5sa', '156-59-5314', '548-376-4889', 69461.56, '1983-04-20', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
 
 
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Avery', 'Stone', 'avery.stone@admin.com', 'seed-hash-admin-001', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Jordan', 'Reed', 'jordan.reed@admin.com', 'seed-hash-admin-002', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Morgan', 'Blake', 'morgan.blake@admin.com', 'seed-hash-admin-003', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Taylor', 'Wells', 'taylor.wells@admin.com', 'seed-hash-admin-004', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Riley', 'Grant', 'riley.grant@admin.com', 'seed-hash-admin-005', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Casey', 'Young', 'casey.young@admin.com', 'seed-hash-admin-006', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Jamie', 'Cole', 'jamie.cole@admin.com', 'seed-hash-admin-007', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Parker', 'Frost', 'parker.frost@admin.com', 'seed-hash-admin-008', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Sydney', 'Mills', 'sydney.mills@admin.com', 'seed-hash-admin-009', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Drew', 'Hart', 'drew.hart@admin.com', 'seed-hash-admin-010', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Alex', 'Adams', 'alex.adams@admin.com', 'seed-hash-admin-011', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Blair', 'Baker', 'blair.baker@admin.com', 'seed-hash-admin-012', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Cameron', 'Carter', 'cameron.carter@admin.com', 'seed-hash-admin-013', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Devon', 'Davis', 'devon.davis@admin.com', 'seed-hash-admin-014', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Emery', 'Evans', 'emery.evans@admin.com', 'seed-hash-admin-015', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Frankie', 'Foster', 'frankie.foster@admin.com', 'seed-hash-admin-016', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Gray', 'Garcia', 'gray.garcia@admin.com', 'seed-hash-admin-017', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Harper', 'Harris', 'harper.harris@admin.com', 'seed-hash-admin-018', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Indigo', 'Ibrahim', 'indigo.ibrahim@admin.com', 'seed-hash-admin-019', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Jules', 'Johnson', 'jules.johnson@admin.com', 'seed-hash-admin-020', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Kendall', 'Khan', 'kendall.khan@admin.com', 'seed-hash-admin-021', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Logan', 'Lewis', 'logan.lewis@admin.com', 'seed-hash-admin-022', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Micah', 'Moore', 'micah.moore@admin.com', 'seed-hash-admin-023', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Nico', 'Nelson', 'nico.nelson@admin.com', 'seed-hash-admin-024', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Oakley', 'Owens', 'oakley.owens@admin.com', 'seed-hash-admin-025', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Phoenix', 'Patel', 'phoenix.patel@admin.com', 'seed-hash-admin-026', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Reese', 'Quinn', 'reese.quinn@admin.com', 'seed-hash-admin-027', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Shawn', 'Rivera', 'shawn.rivera@admin.com', 'seed-hash-admin-028', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Terry', 'Scott', 'terry.scott@admin.com', 'seed-hash-admin-029', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Val', 'Turner', 'val.turner@admin.com', 'seed-hash-admin-030', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Wren', 'Usman', 'wren.usman@admin.com', 'seed-hash-admin-031', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Yael', 'Vega', 'yael.vega@admin.com', 'seed-hash-admin-032', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Zion', 'White', 'zion.white@admin.com', 'seed-hash-admin-033', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Ash', 'Xu', 'ash.xu@admin.com', 'seed-hash-admin-034', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Brook', 'Young', 'brook.young@admin.com', 'seed-hash-admin-035', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Chris', 'Zimmerman', 'chris.zimmerman@admin.com', 'seed-hash-admin-036', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Dana', 'Anderson', 'dana.anderson@admin.com', 'seed-hash-admin-037', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Erin', 'Brown', 'erin.brown@admin.com', 'seed-hash-admin-038', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Finley', 'Clark', 'finley.clark@admin.com', 'seed-hash-admin-039', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Gale', 'Dixon', 'gale.dixon@admin.com', 'seed-hash-admin-040', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Hope', 'Ellis', 'hope.ellis@admin.com', 'seed-hash-admin-041', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Ira', 'Franklin', 'ira.franklin@admin.com', 'seed-hash-admin-042', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Jesse', 'Green', 'jesse.green@admin.com', 'seed-hash-admin-043', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Kris', 'Hall', 'kris.hall@admin.com', 'seed-hash-admin-044', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Lee', 'Irwin', 'lee.irwin@admin.com', 'seed-hash-admin-045', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Max', 'Jones', 'max.jones@admin.com', 'seed-hash-admin-046', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Nell', 'King', 'nell.king@admin.com', 'seed-hash-admin-047', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Omar', 'Long', 'omar.long@admin.com', 'seed-hash-admin-048', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Pia', 'Martin', 'pia.martin@admin.com', 'seed-hash-admin-049', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
-INSERT INTO admins (first_name, last_name, email, password_hash, role, created_at) VALUES ('Quincy', 'Norris', 'quincy.norris@admin.com', 'seed-hash-admin-050', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Avery', 'Stone', 'avery.stone@admin.com', 'seed-hash-admin-001', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Jordan', 'Reed', 'jordan.reed@admin.com', 'seed-hash-admin-002', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Morgan', 'Blake', 'morgan.blake@admin.com', 'seed-hash-admin-003', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Taylor', 'Wells', 'taylor.wells@admin.com', 'seed-hash-admin-004', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Riley', 'Grant', 'riley.grant@admin.com', 'seed-hash-admin-005', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Casey', 'Young', 'casey.young@admin.com', 'seed-hash-admin-006', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Jamie', 'Cole', 'jamie.cole@admin.com', 'seed-hash-admin-007', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Parker', 'Frost', 'parker.frost@admin.com', 'seed-hash-admin-008', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Sydney', 'Mills', 'sydney.mills@admin.com', 'seed-hash-admin-009', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Drew', 'Hart', 'drew.hart@admin.com', 'seed-hash-admin-010', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Alex', 'Adams', 'alex.adams@admin.com', 'seed-hash-admin-011', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Blair', 'Baker', 'blair.baker@admin.com', 'seed-hash-admin-012', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Cameron', 'Carter', 'cameron.carter@admin.com', 'seed-hash-admin-013', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Devon', 'Davis', 'devon.davis@admin.com', 'seed-hash-admin-014', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Emery', 'Evans', 'emery.evans@admin.com', 'seed-hash-admin-015', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Frankie', 'Foster', 'frankie.foster@admin.com', 'seed-hash-admin-016', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Gray', 'Garcia', 'gray.garcia@admin.com', 'seed-hash-admin-017', 'super_admin', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Harper', 'Harris', 'harper.harris@admin.com', 'seed-hash-admin-018', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Indigo', 'Ibrahim', 'indigo.ibrahim@admin.com', 'seed-hash-admin-019', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Jules', 'Johnson', 'jules.johnson@admin.com', 'seed-hash-admin-020', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Kendall', 'Khan', 'kendall.khan@admin.com', 'seed-hash-admin-021', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Logan', 'Lewis', 'logan.lewis@admin.com', 'seed-hash-admin-022', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Micah', 'Moore', 'micah.moore@admin.com', 'seed-hash-admin-023', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Nico', 'Nelson', 'nico.nelson@admin.com', 'seed-hash-admin-024', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Oakley', 'Owens', 'oakley.owens@admin.com', 'seed-hash-admin-025', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Phoenix', 'Patel', 'phoenix.patel@admin.com', 'seed-hash-admin-026', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Reese', 'Quinn', 'reese.quinn@admin.com', 'seed-hash-admin-027', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Shawn', 'Rivera', 'shawn.rivera@admin.com', 'seed-hash-admin-028', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Terry', 'Scott', 'terry.scott@admin.com', 'seed-hash-admin-029', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Val', 'Turner', 'val.turner@admin.com', 'seed-hash-admin-030', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Wren', 'Usman', 'wren.usman@admin.com', 'seed-hash-admin-031', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Yael', 'Vega', 'yael.vega@admin.com', 'seed-hash-admin-032', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Zion', 'White', 'zion.white@admin.com', 'seed-hash-admin-033', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Ash', 'Xu', 'ash.xu@admin.com', 'seed-hash-admin-034', 'finance', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Brook', 'Young', 'brook.young@admin.com', 'seed-hash-admin-035', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Chris', 'Zimmerman', 'chris.zimmerman@admin.com', 'seed-hash-admin-036', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Dana', 'Anderson', 'dana.anderson@admin.com', 'seed-hash-admin-037', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Erin', 'Brown', 'erin.brown@admin.com', 'seed-hash-admin-038', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Finley', 'Clark', 'finley.clark@admin.com', 'seed-hash-admin-039', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Gale', 'Dixon', 'gale.dixon@admin.com', 'seed-hash-admin-040', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Hope', 'Ellis', 'hope.ellis@admin.com', 'seed-hash-admin-041', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Ira', 'Franklin', 'ira.franklin@admin.com', 'seed-hash-admin-042', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Jesse', 'Green', 'jesse.green@admin.com', 'seed-hash-admin-043', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Kris', 'Hall', 'kris.hall@admin.com', 'seed-hash-admin-044', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Lee', 'Irwin', 'lee.irwin@admin.com', 'seed-hash-admin-045', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Max', 'Jones', 'max.jones@admin.com', 'seed-hash-admin-046', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Nell', 'King', 'nell.king@admin.com', 'seed-hash-admin-047', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Omar', 'Long', 'omar.long@admin.com', 'seed-hash-admin-048', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Pia', 'Martin', 'pia.martin@admin.com', 'seed-hash-admin-049', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
+INSERT INTO admins (first_name, last_name, email, password_hash, roles, created_at, is_active, updated_at) VALUES ('Quincy', 'Norris', 'quincy.norris@admin.com', 'seed-hash-admin-050', 'operations', CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'), true, CURRENT_TIMESTAMP - (random() * INTERVAL '100 years'));
 
 INSERT INTO orders (client_id, instrument_id, order_type, quantity, status, submitted_at, accepted_at, rejected_at, filled_at, failed_at, execution_price, rejection_reason, failure_reason) VALUES (1, 1, 'BUY', 120, 'FILLED', '2016-09-23 10:15:30-06', '2016-09-23 10:15:31-06', NULL, '2016-09-23 10:15:34-06', NULL, 185.3200, NULL, NULL);
 INSERT INTO orders (client_id, instrument_id, order_type, quantity, status, submitted_at, accepted_at, rejected_at, filled_at, failed_at, execution_price, rejection_reason, failure_reason) VALUES (2, 2, 'BUY', 60, 'FILLED', '2016-11-08 09:42:11-06', '2016-11-08 09:42:12-06', NULL, '2016-11-08 09:42:16-06', NULL, 402.1100, NULL, NULL);
@@ -1210,6 +1210,104 @@ INSERT INTO holdings (holding_id, client_id, instrument_id, quantity, average_co
 INSERT INTO holdings (holding_id, client_id, instrument_id, quantity, average_cost) VALUES (46, 46, 46, 50, 36.1800);
 INSERT INTO holdings (holding_id, client_id, instrument_id, quantity, average_cost) VALUES (48, 48, 48, 100, 0.8900);
 
+-- Seed data for transactions table
+-- Transactions track deposits/withdrawals and associated order information
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (1, 1, '2016-09-23 10:15:34-06', 20436.40, 22238.40, 'BUY', '2016-09-23 10:15:34-06', 22238.40, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (2, 2, '2016-11-08 09:42:16-06', 17874.95, 24126.60, 'BUY', '2016-11-08 09:42:16-06', 24126.60, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (4, 5, '2017-05-22 11:05:31-06', 30575.17, 3546.75, 'BUY', '2017-05-22 11:05:31-06', 3546.75, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (1, 4, '2017-02-16 14:22:07-06', 27614.55, 7444.00, 'SELL', '2017-02-16 14:22:07-06', 7444.00, 'DEPOSIT');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (2, 7, '2017-11-27 10:48:57-06', 19513.50, 8091.00, 'SELL', '2017-11-27 10:48:57-06', 8091.00, 'DEPOSIT');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (7, 10, '2018-07-12 14:04:18-06', 28743.12, 3576.60, 'BUY', '2018-07-12 14:04:18-06', 3576.60, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (11, 11, '2018-10-03 10:11:29-06', 30126.54, 11845.00, 'BUY', '2018-10-03 10:11:29-06', 11845.00, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (13, 13, '2019-03-11 13:45:21-06', 22456.89, 9704.40, 'BUY', '2019-03-11 13:45:21-06', 9704.40, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (14, 14, '2019-06-20 09:58:12-06', 25301.45, 12246.00, 'BUY', '2019-06-20 09:58:12-06', 12246.00, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (18, 18, '2020-06-24 11:07:55-06', 26156.78, 1574.20, 'BUY', '2020-06-24 11:07:55-06', 1574.20, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (21, 21, '2021-02-18 10:52:12-06', 24632.11, 1713.00, 'BUY', '2021-02-18 10:52:12-06', 1713.00, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (23, 23, '2021-08-26 14:27:41-06', 26542.99, 2054.00, 'BUY', '2021-08-26 14:27:41-06', 2054.00, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (25, 25, '2022-01-25 09:06:59-06', 20478.34, 1377.00, 'BUY', '2022-01-25 09:06:59-06', 1377.00, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (26, 26, '2022-04-07 13:18:35-06', 21234.56, 5481.00, 'BUY', '2022-04-07 13:18:35-06', 5481.00, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (29, 29, '2022-12-05 12:03:52-06', 23567.89, 509.20, 'BUY', '2022-12-05 12:03:52-06', 509.20, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (31, 31, '2023-05-16 09:28:19-06', 24234.12, 4387.50, 'BUY', '2023-05-16 09:28:19-06', 4387.50, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (34, 34, '2024-01-17 10:09:43-06', 25123.67, 971.20, 'BUY', '2024-01-17 10:09:43-06', 971.20, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (37, 37, '2024-09-19 12:51:09-06', 26456.23, 1143.50, 'BUY', '2024-09-19 12:51:09-06', 1143.50, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (39, 39, '2025-02-12 10:19:51-06', 23789.12, 989.60, 'BUY', '2025-02-12 10:19:51-06', 989.60, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (41, 41, '2025-06-17 13:47:13-06', 22934.56, 967.40, 'BUY', '2025-06-17 13:47:13-06', 967.40, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (42, 42, '2025-08-21 09:59:59-06', 21345.67, 1082.50, 'BUY', '2025-08-21 09:59:59-06', 1082.50, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (46, 46, '2026-03-12 11:52:34-05', 24567.89, 1809.00, 'BUY', '2026-03-12 11:52:34-05', 1809.00, 'WITHDRAWAL');
+INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
+VALUES (48, 48, '2026-07-08 15:20:38-05', 22123.45, 89.00, 'BUY', '2026-07-08 15:20:38-05', 89.00, 'WITHDRAWAL');
+
+-- Seed data for holding_history table
+-- Tracks historical changes to holdings when orders are executed
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (1, 1, 1, 1, 80, 185.3200, '2016-09-23 10:15:34-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (2, 2, 2, 2, 40, 402.1100, '2016-11-08 09:42:16-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (4, 5, 4, 3, 25, 141.8700, '2017-05-22 11:05:31-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (1, 4, 1, 1, 120, 185.3200, '2017-02-16 14:22:07-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (2, 7, 2, 2, 60, 402.1100, '2017-11-27 10:48:57-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (7, 10, 7, 4, 15, 238.4400, '2018-07-12 14:04:18-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (11, 11, 11, 11, 100, 118.4500, '2018-10-03 10:11:29-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (13, 13, 13, 13, 20, 485.2200, '2019-03-11 13:45:21-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (14, 14, 14, 14, 20, 612.3000, '2019-06-20 09:58:12-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (18, 18, 18, 18, 10, 157.4200, '2020-06-24 11:07:55-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (21, 21, 21, 21, 10, 171.3000, '2021-02-18 10:52:12-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (23, 23, 23, 23, 10, 205.4000, '2021-08-26 14:27:41-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (25, 25, 25, 25, 50, 27.5400, '2022-01-25 09:06:59-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (26, 26, 26, 26, 10, 548.1000, '2022-04-07 13:18:35-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (29, 29, 29, 29, 10, 50.9200, '2022-12-05 12:03:52-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (31, 31, 31, 31, 10, 438.7500, '2023-05-16 09:28:19-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (34, 34, 34, 34, 10, 97.1200, '2024-01-17 10:09:43-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (37, 37, 37, 37, 50, 22.8700, '2024-09-19 12:51:09-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (39, 39, 39, 39, 10, 98.9600, '2025-02-12 10:19:51-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (41, 41, 41, 41, 10, 96.7400, '2025-06-17 13:47:13-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (42, 42, 42, 42, 10, 108.2500, '2025-08-21 09:59:59-06');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (46, 46, 46, 46, 50, 36.1800, '2026-03-12 11:52:34-05');
+INSERT INTO holding_history (holding_id, order_id, client_id, instrument_id, quantity, average_cost, updated_at)
+VALUES (48, 48, 48, 48, 100, 0.8900, '2026-07-08 15:20:38-05');
+
 -- Explicit IDs above do not automatically advance BIGSERIAL sequences.
 -- Keep the next application-generated IDs from colliding with seeded rows.
 SELECT setval(pg_get_serial_sequence('instruments', 'instrument_id'), MAX(instrument_id)) FROM instruments;
@@ -1217,6 +1315,8 @@ SELECT setval(pg_get_serial_sequence('clients', 'client_id'), MAX(client_id)) FR
 SELECT setval(pg_get_serial_sequence('admins', 'admin_id'), MAX(admin_id)) FROM admins;
 SELECT setval(pg_get_serial_sequence('orders', 'order_id'), MAX(order_id)) FROM orders;
 SELECT setval(pg_get_serial_sequence('holdings', 'holding_id'), MAX(holding_id)) FROM holdings;
+SELECT setval(pg_get_serial_sequence('transactions', 'transaction_id'), MAX(transaction_id)) FROM transactions;
+SELECT setval(pg_get_serial_sequence('holding_history', 'holding_id'), MAX(holding_id)) FROM holding_history;
 
 
 
