@@ -7,6 +7,12 @@ import org.springframework.stereotype.Service;
 import group12.Entities.ClientEntity;
 import group12.Repository.ClientRepository;
 import group12.dto.ClientDTO;
+import group12.dto.ClientUpdateDTO;
+import group12.dto.AccountBalanceDTO;
+import org.springframework.http.HttpStatus;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import java.math.BigDecimal;
 import group12.exception.ClientNotFoundException;
 import group12.exception.ClientSubmissionException;
 
@@ -49,6 +55,56 @@ public class ClientService {
         client.setPhoneNumber(clientDTO.getPhoneNumber());
         client.setAccountBalance(clientDTO.getAccountBalance());
         return client;
+    }
+
+    public AccountBalanceDTO getAccountBalance(Long clientId) {
+        ClientEntity client = getClientById(clientId);
+        return new AccountBalanceDTO(clientId, client.getAccountBalance());
+    }
+
+    public ClientEntity toEntity(ClientUpdateDTO clientDTO) {
+        ClientEntity client = new ClientEntity();
+        client.setFirstName(clientDTO.getFirstName());
+        client.setLastName(clientDTO.getLastName());
+        client.setEmail(clientDTO.getEmail());
+        client.setPasswordHash(clientDTO.getPasswordHash());
+        client.setSsn(clientDTO.getSsn());
+        client.setPhoneNumber(clientDTO.getPhoneNumber());
+        return client;
+    }
+
+    @Transactional
+    public AccountBalanceDTO deposit(Long clientId, BigDecimal amount) {
+        return changeBalance(clientId, amount, true);
+    }
+
+    @Transactional
+    public AccountBalanceDTO withdraw(Long clientId, BigDecimal amount) {
+        return changeBalance(clientId, amount, false);
+    }
+
+    private AccountBalanceDTO changeBalance(Long clientId, BigDecimal amount, boolean deposit) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Amount must be greater than zero");
+        }
+
+        ClientEntity client = clientRepository.findByIdForUpdate(clientId);
+        if (client == null) {
+            throw new ClientNotFoundException("Client not found with id: " + clientId);
+        }
+        BigDecimal balance = client.getAccountBalance();
+        if (balance == null) {
+            throw new IllegalStateException("Client account balance is not set");
+        }
+        if (!deposit && balance.compareTo(amount) < 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Insufficient funds");
+        }
+
+        BigDecimal updatedBalance = deposit ? balance.add(amount) : balance.subtract(amount);
+        if (clientRepository.updateAccountBalance(clientId, updatedBalance) != 1) {
+            throw new IllegalStateException("Failed to update client account balance");
+        }
+        return new AccountBalanceDTO(clientId, updatedBalance);
     }
 
     public boolean createClient(ClientEntity client) {

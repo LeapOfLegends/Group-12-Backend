@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import group12.Entities.ClientEntity;
 import group12.Services.ClientService;
 import group12.dto.ClientDTO;
+import group12.dto.ClientUpdateDTO;
 
 class ClientControllerTest {
 
@@ -83,14 +84,13 @@ class ClientControllerTest {
     }
     @Test
     void updateClient_shouldReturn200_whenClientExists() {
-        ClientDTO request = new ClientDTO();
+        ClientUpdateDTO request = new ClientUpdateDTO();
         request.setFirstName("Ava");
         request.setLastName("Martinez");
         request.setEmail("ava.updated@example.com");
         request.setPasswordHash("new-hash");
         request.setSsn("123-45-6789");
         request.setPhoneNumber("555-987-6543");
-        request.setAccountBalance(new BigDecimal("300.00"));
 
         ClientEntity existing = new ClientEntity();
         existing.setClientId(1L);
@@ -101,7 +101,7 @@ class ClientControllerTest {
         updated.setFirstName("Ava");
 
         when(clientService.getClientById(1L)).thenReturn(existing);
-        when(clientService.toEntity(any(ClientDTO.class))).thenReturn(updated);
+        when(clientService.toEntity(any(ClientUpdateDTO.class))).thenReturn(updated);
         when(clientService.updateClient(1L, updated)).thenReturn(true);
 
         ResponseEntity<ClientEntity> response = clientController.updateClient(1L, request);
@@ -125,20 +125,19 @@ class ClientControllerTest {
 
     @Test
     void updateClient_shouldReturn400_whenClientCannotBeUpdated() {
-        ClientDTO request = new ClientDTO();
+        ClientUpdateDTO request = new ClientUpdateDTO();
         request.setFirstName("Ava");
         request.setLastName("Martinez");
         request.setEmail("ava@example.com");
         request.setPasswordHash("hash");
         request.setSsn("123-45-6789");
         request.setPhoneNumber("555-123-4567");
-        request.setAccountBalance(new BigDecimal("10.00"));
 
         ClientEntity entity = new ClientEntity();
         entity.setClientId(1L);
         entity.setFirstName("Ava");
 
-        when(clientService.toEntity(any(ClientDTO.class))).thenReturn(entity);
+        when(clientService.toEntity(any(ClientUpdateDTO.class))).thenReturn(entity);
         when(clientService.updateClient(1L, entity)).thenReturn(false);
 
         ResponseEntity<ClientEntity> response = clientController.updateClient(1L, request);

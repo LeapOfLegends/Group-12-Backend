@@ -41,8 +41,7 @@ public interface ClientRepository {
     @Options(useGeneratedKeys = true, keyProperty = "clientId", keyColumn = "client_id")
     int save(ClientEntity client);
 
-    // TODO: have separate methods for updating different parts of the client entity?
-    @Update("UPDATE clients SET first_name = #{firstName}, last_name = #{lastName}, email = #{email}, password_hash = #{passwordHash}, ssn = #{ssn}, phone_number = #{phoneNumber}, account_balance = #{accountBalance} WHERE client_id = #{clientId}")
+    @Update("UPDATE clients SET first_name = #{firstName}, last_name = #{lastName}, email = #{email}, password_hash = #{passwordHash}, ssn = #{ssn}, phone_number = #{phoneNumber} WHERE client_id = #{clientId}")
     int update(ClientEntity client);
 
     @Update("UPDATE clients SET account_balance = #{accountBalance} WHERE client_id = #{clientId}")
