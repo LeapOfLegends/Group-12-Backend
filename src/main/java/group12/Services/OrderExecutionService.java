@@ -11,9 +11,11 @@ import group12.Repository.ClientRepository;
 import group12.Repository.HoldingRepository;
 import group12.Repository.InstrumentRepository;
 import group12.Repository.OrderRepository;
+import group12.dto.OrderFilledEvent;
 import group12.exception.OrderLifecycleException;
 import group12.exception.OrderNotFoundException;
 import group12.exception.RetryableOrderExecutionException;
+import group12.kafka.OrderProducer;
 import group12.orderlifecycle.OrderLifecycleProperties;
 import group12.orderlifecycle.QuoteFreshnessPolicy;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 @Service
@@ -39,6 +42,7 @@ public class OrderExecutionService {
     private final QuoteFreshnessPolicy quoteFreshnessPolicy;
     private final OrderLifecycleProperties lifecycleProperties;
     private final Clock clock;
+    private final OrderProducer orderProducer;
 
     public OrderExecutionService(
             OrderRepository orderRepository,
@@ -47,7 +51,8 @@ public class OrderExecutionService {
             InstrumentRepository instrumentRepository,
             QuoteFreshnessPolicy quoteFreshnessPolicy,
             OrderLifecycleProperties lifecycleProperties,
-            @Qualifier("orderLifecycleClock") Clock clock
+            @Qualifier("orderLifecycleClock") Clock clock,
+            OrderProducer orderProducer
     ) {
         this.orderRepository = orderRepository;
         this.clientRepository = clientRepository;
@@ -56,6 +61,7 @@ public class OrderExecutionService {
         this.quoteFreshnessPolicy = quoteFreshnessPolicy;
         this.lifecycleProperties = lifecycleProperties;
         this.clock = clock;
+        this.orderProducer = orderProducer;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -109,7 +115,21 @@ public class OrderExecutionService {
             throw invariantViolation(order, "order type is unsupported");
         }
 
-        return reload(order.getOrderId());
+        OrderEntity filledOrder = reload(order.getOrderId());
+        
+        // Publish OrderFilledEvent to Kafka after successful execution
+        if (filledOrder.getStatus() == OrderStatus.FILLED) {
+            OrderFilledEvent event = new OrderFilledEvent(
+                filledOrder.getOrderId(),
+                filledOrder.getClientId(),
+                filledOrder.getQuantity().doubleValue(),
+                filledOrder.getExecutionPrice(),
+                LocalDateTime.now()
+            );
+            orderProducer.publishOrderFilled(event);
+        }
+        
+        return filledOrder;
     }
 
     private void executeBuy(
