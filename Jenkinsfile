@@ -4,7 +4,7 @@ pipeline {
     environment {
     JAVA_HOME = '/usr/lib/jvm/java-25-amazon-corretto'
     PATH = "${JAVA_HOME}/bin:${env.PATH}"
-
+    KAFKA_BOOTSTRAP_SERVERS = '10.14.142.109:9092'
     GITHUB_REPO_URL = 'https://github.com/berribitz/Group-12-Backend.git'
     }
 stages{
@@ -66,14 +66,14 @@ stages{
 
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean package '
             }
         }
 
         stage('Docker Build') {
     steps {
         sh 'docker build -t capstone-backend:${BUILD_NUMBER} .'
-        sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:1.0.0'
+        sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:1.1.0'
         }
     }
     stage('Deploy to VM') {
@@ -84,7 +84,7 @@ stages{
                 sh '''
                     docker stop capstone-backend || true
                     docker rm capstone-backend || true
-                    docker run -d --name capstone-backend -p 8081:8081 capstone-backend:1.0.0
+                    docker run -d --name capstone-backend -p 8081:8081 capstone-backend:1.1.0
                 '''
             }
         }
