@@ -4,7 +4,7 @@ pipeline {
     environment {
     JAVA_HOME = '/usr/lib/jvm/java-25-amazon-corretto'
     PATH = "${JAVA_HOME}/bin:${env.PATH}"
-
+    KAFKA_BOOTSTRAP_SERVERS = '10.14.142.109:9092'
     GITHUB_REPO_URL = 'https://github.com/berribitz/Group-12-Backend.git'
     }
 stages{
@@ -66,7 +66,7 @@ stages{
 
         stage('Build') {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean package '
             }
         }
 
