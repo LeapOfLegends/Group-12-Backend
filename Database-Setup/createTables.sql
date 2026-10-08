@@ -53,7 +53,9 @@ CREATE TABLE admins(
 	email VARCHAR(255) NOT NULL UNIQUE,
 	password_hash VARCHAR(255) NOT NULL,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	roles TEXT NOT NULL CHECK (role IN ('super_admin', 'finance', 'operations'))
+	roles TEXT NOT NULL CHECK (roles IN ('super_admin', 'finance', 'operations')),
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE orders (
@@ -84,4 +86,27 @@ CREATE TABLE holdings (
     average_cost NUMERIC(30,16) NOT NULL CHECK (average_cost >= 0),
 	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_holdings_client_instrument UNIQUE (client_id, instrument_id)
+);
+
+CREATE TABLE transactions (
+	transaction_id BIGSERIAL PRIMARY KEY,
+	client_id BIGINT NOT NULL REFERENCES clients(client_id),
+	order_id BIGINT REFERENCES orders(order_id),
+	transaction_history TIMESTAMPTZ,
+	account_balance NUMERIC(40,16) NOT NULL DEFAULT 0 CHECK (account_balance >= 0), --(account_balance joined from clients)
+	order_amount NUMERIC(40,16), --(trade_value joined from orders)
+	order_type TEXT CHECK(order_type IN ('SELL', 'BUY')), --(order_type joined from orders)
+	order_history TIMESTAMPTZ, --(filled_at joined from orders)
+	transaction_amount NUMERIC(20, 8),
+	transaction_type TEXT CHECK(transaction_type IN ('WITHDRAWAL', 'DEPOSIT'))
+);
+
+CREATE TABLE holding_history (
+    holding_id BIGINT NOT NULL REFERENCES holdings(holding_id),
+	order_id BIGINT NOT NULL REFERENCES orders(order_id),
+    client_id BIGINT NOT NULL REFERENCES clients(client_id),
+    instrument_id BIGINT NOT NULL REFERENCES instruments(instrument_id),
+    quantity NUMERIC(20,8) NOT NULL CHECK (quantity > 0),
+    average_cost NUMERIC(30,16) NOT NULL CHECK (average_cost >= 0),
+	updated_at TIMESTAMP -- will be pulled from holdings tables so will not use current_timestamp
 );
