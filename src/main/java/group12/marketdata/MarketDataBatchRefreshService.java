@@ -21,68 +21,75 @@ public class MarketDataBatchRefreshService {
             LoggerFactory.getLogger(MarketDataBatchRefreshService.class);
 
     private final InstrumentRepository instrumentRepository;
-    private final MarketDataProvider marketDataProvider;
+    private final List<MarketDataProvider> marketDataProviders;
     private final MarketSnapshotPersistenceService persistenceService;
 
     public MarketDataBatchRefreshService(
             InstrumentRepository instrumentRepository,
-            MarketDataProvider marketDataProvider,
+            List<MarketDataProvider> marketDataProviders,
             MarketSnapshotPersistenceService persistenceService
     ) {
         this.instrumentRepository = instrumentRepository;
-        this.marketDataProvider = marketDataProvider;
+        this.marketDataProviders = List.copyOf(marketDataProviders);
         this.persistenceService = persistenceService;
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public int refreshEligibleInstruments() {
-        Map<String, List<InstrumentEntity>> instrumentsBySymbol = new TreeMap<>();
-        Map<String, MarketDataRequest> requestsBySymbol = new TreeMap<>();
+        List<InstrumentRequest> eligibleInstruments = new ArrayList<>();
         for (InstrumentEntity instrument : instrumentRepository.findTradableInstruments()) {
             if (instrument == null || !instrument.isTradable()) {
                 continue;
             }
-
-            MarketDataRequest request = toMarketDataRequest(instrument);
-            if (!marketDataProvider.supports(request)) {
-                continue;
-            }
-
-            String symbol = normalizeSymbol(request.symbol());
-            instrumentsBySymbol
-                    .computeIfAbsent(symbol, ignored -> new ArrayList<>())
-                    .add(instrument);
-            requestsBySymbol.putIfAbsent(symbol, request);
+            eligibleInstruments.add(new InstrumentRequest(
+                    instrument,
+                    toMarketDataRequest(instrument)
+            ));
         }
-        if (instrumentsBySymbol.isEmpty()) {
-            return 0;
-        }
-
-        Map<String, MarketSnapshot> snapshots =
-                marketDataProvider.getCurrentMarketSnapshots(requestsBySymbol.values());
 
         int persistedInstruments = 0;
-        for (Map.Entry<String, MarketSnapshot> entry : snapshots.entrySet()) {
-            List<InstrumentEntity> matchingInstruments =
-                    instrumentsBySymbol.get(normalizeSymbol(entry.getKey()));
-            if (matchingInstruments == null) {
+        for (MarketDataProvider marketDataProvider : marketDataProviders) {
+            Map<String, List<InstrumentEntity>> instrumentsBySymbol = new TreeMap<>();
+            Map<String, MarketDataRequest> requestsBySymbol = new TreeMap<>();
+            for (InstrumentRequest eligibleInstrument : eligibleInstruments) {
+                MarketDataRequest request = eligibleInstrument.request();
+                if (!marketDataProvider.supports(request)) {
+                    continue;
+                }
+                String symbol = normalizeSymbol(request.symbol());
+                instrumentsBySymbol
+                        .computeIfAbsent(symbol, ignored -> new ArrayList<>())
+                        .add(eligibleInstrument.instrument());
+                requestsBySymbol.putIfAbsent(symbol, request);
+            }
+            if (requestsBySymbol.isEmpty()) {
                 continue;
             }
-            for (InstrumentEntity instrument : matchingInstruments) {
-                try {
-                    if (persistenceService.persist(
-                            instrument.getInstrumentId(),
-                            entry.getValue()
-                    )) {
-                        persistedInstruments++;
+
+            Map<String, MarketSnapshot> snapshots =
+                    marketDataProvider.getCurrentMarketSnapshots(requestsBySymbol.values());
+            for (Map.Entry<String, MarketSnapshot> entry : snapshots.entrySet()) {
+                List<InstrumentEntity> matchingInstruments =
+                        instrumentsBySymbol.get(normalizeSymbol(entry.getKey()));
+                if (matchingInstruments == null) {
+                    continue;
+                }
+                for (InstrumentEntity instrument : matchingInstruments) {
+                    try {
+                        if (persistenceService.persist(
+                                instrument.getInstrumentId(),
+                                entry.getValue()
+                        )) {
+                            persistedInstruments++;
+                        }
+                    } catch (RuntimeException exception) {
+                        LOGGER.warn(
+                                "Could not persist market snapshot for instrument {} ({})",
+                                instrument.getInstrumentId(),
+                                normalizeSymbol(instrument.getSymbol()),
+                                exception
+                        );
                     }
-                } catch (RuntimeException exception) {
-                    LOGGER.warn(
-                            "Could not persist market snapshot for instrument {} ({})",
-                            instrument.getInstrumentId(),
-                            normalizeSymbol(instrument.getSymbol()),
-                            exception
-                    );
                 }
             }
         }
@@ -100,5 +107,11 @@ public class MarketDataBatchRefreshService {
 
     private String normalizeSymbol(String symbol) {
         return symbol == null ? "" : symbol.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private record InstrumentRequest(
+            InstrumentEntity instrument,
+            MarketDataRequest request
+    ) {
     }
 }
