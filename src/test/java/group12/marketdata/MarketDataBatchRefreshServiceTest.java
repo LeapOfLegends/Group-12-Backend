@@ -2,6 +2,7 @@ package group12.marketdata;
 
 import group12.Entities.InstrumentEntity;
 import group12.Repository.InstrumentRepository;
+import group12.marketdata.alpaca.AlpacaProperties;
 import group12.marketdata.exception.MarketDataProviderException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

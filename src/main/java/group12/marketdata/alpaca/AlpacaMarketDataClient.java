@@ -1,9 +1,12 @@
-package group12.marketdata;
+package group12.marketdata.alpaca;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import group12.marketdata.MarketDataProvider;
+import group12.marketdata.MarketDataRequest;
+import group12.marketdata.MarketSnapshot;
 import group12.marketdata.exception.MarketDataConfigurationException;
 import group12.marketdata.exception.MarketDataException;
 import group12.marketdata.exception.MarketDataProviderException;

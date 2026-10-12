@@ -1,5 +1,6 @@
-package group12.marketdata;
+package group12.marketdata.alpaca;
 
+import group12.marketdata.MarketDataRequest;
 import group12.marketdata.exception.MarketDataConfigurationException;
 import group12.marketdata.exception.MarketDataProviderException;
 import group12.marketdata.exception.MarketDataRateLimitException;
