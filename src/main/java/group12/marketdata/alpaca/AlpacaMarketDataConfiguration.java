@@ -1,4 +1,4 @@
-package group12.marketdata;
+package group12.marketdata.alpaca;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

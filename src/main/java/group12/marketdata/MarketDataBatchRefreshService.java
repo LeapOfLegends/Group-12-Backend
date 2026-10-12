@@ -93,7 +93,8 @@ public class MarketDataBatchRefreshService {
         return new MarketDataRequest(
                 instrument.getSymbol(),
                 instrument.getAssetClass(),
-                instrument.getCurrency()
+                instrument.getCurrency(),
+                instrument.getMarketCode()
         );
     }
 

@@ -1,5 +1,7 @@
-package group12.marketdata;
+package group12.marketdata.alpaca;
 
+import group12.marketdata.MarketDataRequest;
+import group12.marketdata.MarketSnapshot;
 import group12.marketdata.exception.MarketDataProviderException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,12 @@ class AlpacaMarketDataBatchClientTest {
     private static final String URL =
             "https://data.alpaca.markets/v2/stocks/snapshots"
                     + "?symbols=AAPL,MSFT&feed=iex";
+    private static final String AAPL_URL =
+            "https://data.alpaca.markets/v2/stocks/snapshots"
+                    + "?symbols=AAPL&feed=iex";
+    private static final String BTC_URL =
+            "https://data.alpaca.markets/v1beta3/crypto/us/snapshots"
+                    + "?symbols=BTC/USD";
 
     private MockRestServiceServer server;
     private AlpacaMarketDataClient client;
@@ -44,6 +52,7 @@ class AlpacaMarketDataBatchClientTest {
         properties.setSecretKey("test-secret-key");
         properties.setFeed("iex");
         properties.setSupportedUsEquitySymbols(Set.of("AAPL", "MSFT"));
+        properties.setSupportedCryptoSymbols(Set.of("BTC/USD", "ETH/USD", "SOL/USD"));
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl("https://data.alpaca.markets");
@@ -136,8 +145,90 @@ class AlpacaMarketDataBatchClientTest {
     }
 
     @Test
+    void mapsCryptoSnapshotFromWrappedResponse() {
+        server.expect(once(), requestTo(BTC_URL))
+                .andRespond(withSuccess("""
+                        {
+                          "snapshots": {
+                            "BTC/USD": {
+                              "latestQuote": {
+                                "bp": 62000.10,
+                                "ap": 62001.20,
+                                "t": "2026-09-29T15:00:00.123456789Z"
+                              },
+                              "latestTrade": {
+                                "p": 62000.75,
+                                "t": "2026-09-29T15:00:01.987654321Z"
+                              }
+                            }
+                          }
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        MarketSnapshot snapshot = client.getCurrentMarketSnapshots(
+                List.of(cryptoInstrument("BTC/USD"))
+        ).get("BTC/USD");
+
+        assertEquals(0, new BigDecimal("62000.10").compareTo(snapshot.bidPrice()));
+        assertEquals(0, new BigDecimal("62001.20").compareTo(snapshot.askPrice()));
+        assertEquals(new BigDecimal("62000.75"), snapshot.lastPrice());
+        assertEquals(
+                OffsetDateTime.parse("2026-09-29T15:00:00.123456Z"),
+                snapshot.quoteAsOf()
+        );
+        assertEquals(
+                OffsetDateTime.parse("2026-09-29T15:00:01.987654Z"),
+                snapshot.lastTradeAsOf()
+        );
+        server.verify();
+    }
+
+    @Test
+    void combinesEquityAndCryptoSnapshotsFromOneRequestPerEndpoint() {
+        server.expect(once(), requestTo(AAPL_URL))
+                .andRespond(withSuccess("""
+                        {
+                          "AAPL": {
+                            "latestTrade": {
+                              "p": 201.15,
+                              "t": "2026-09-29T15:00:01Z"
+                            }
+                          }
+                        }
+                        """, MediaType.APPLICATION_JSON));
+        server.expect(once(), requestTo(BTC_URL))
+                .andRespond(withSuccess("""
+                        {
+                          "snapshots": {
+                            "BTC/USD": {
+                              "latestQuote": {
+                                "bp": 62000.10,
+                                "ap": 62001.20,
+                                "t": "2026-09-29T15:00:00Z"
+                              }
+                            }
+                          }
+                        }
+                        """, MediaType.APPLICATION_JSON));
+
+        Map<String, MarketSnapshot> result = client.getCurrentMarketSnapshots(
+                List.of(cryptoInstrument("BTC/USD"), instrument("AAPL"))
+        );
+
+        assertEquals(Set.of("AAPL", "BTC/USD"), result.keySet());
+        assertEquals(new BigDecimal("201.15"), result.get("AAPL").lastPrice());
+        assertEquals(
+                0,
+                new BigDecimal("62000.10").compareTo(result.get("BTC/USD").bidPrice())
+        );
+        server.verify();
+    }
+
+    @Test
     void batchRequestRejectsUnsupportedInstrumentWithoutHttp() {
-        MarketDataRequest instrument = new MarketDataRequest("AAPL", "Crypto", "USD");
+        MarketDataRequest instrument = new MarketDataRequest(
+                "AAPL", "Crypto", "USD", null
+        );
 
         assertThrows(
                 MarketDataProviderException.class,
@@ -147,6 +238,10 @@ class AlpacaMarketDataBatchClientTest {
     }
 
     private MarketDataRequest instrument(String symbol) {
-        return new MarketDataRequest(symbol, "Equity", "USD");
+        return new MarketDataRequest(symbol, "Equity", "USD", null);
+    }
+
+    private MarketDataRequest cryptoInstrument(String symbol) {
+        return new MarketDataRequest(symbol, "Crypto", "USD", null);
     }
 }

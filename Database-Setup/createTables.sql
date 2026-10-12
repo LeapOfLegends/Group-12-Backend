@@ -1,10 +1,12 @@
-DROP TABLE IF EXISTS holdings;
-DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS instruments;
-DROP TABLE IF EXISTS markets;
-DROP TABLE IF EXISTS clients;
-DROP TABLE IF EXISTS admins;
---DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS holdings CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS instruments CASCADE;
+DROP TABLE IF EXISTS markets CASCADE;
+DROP TABLE IF EXISTS clients CASCADE;
+DROP TABLE IF EXISTS admins CASCADE;    
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS holding_history CASCADE;
+
 
 CREATE TABLE markets (
     market_id BIGSERIAL PRIMARY KEY,
@@ -16,7 +18,7 @@ CREATE TABLE markets (
 
 CREATE TABLE instruments (
 	instrument_id BIGSERIAL PRIMARY KEY,
-    market_id BIGINT REFERENCES markets(market_id),
+    market_id BIGINT REFERENCES markets(market_id) NOT NULL,
     symbol VARCHAR(20) NOT NULL,
     instrument_name VARCHAR(100) NOT NULL,
     asset_class VARCHAR(100) NOT NULL,
