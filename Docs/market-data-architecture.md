@@ -38,7 +38,7 @@ flowchart LR
 
 4. `AlpacaMarketDataClient` separates supported symbols by asset class. A mixed batch produces at most one equity request and one crypto request. The equity request uses the configured IEX feed; the crypto endpoint has no equity feed parameter.
 5. `BiquoteMarketDataClient` requires no API key and polls `/api/latest`. Its fixed project catalog is `EUR/USD`, `USD/JPY`, `GBP/USD`, `AUD/USD`, `USD/CAD`, and `USD/INR`. The client translates these LEAP symbols to `EURUSD`, `USDJPY`, `GBPUSD`, `AUDUSD`, `USDCAD`, and `USDINR`, then sends them as repeated `symbols` query parameters in one request.
-6. Biquote `bid`, `ask`, and `time` map to `bidPrice`, `askPrice`, and `quoteAsOf`. FX `lastPrice` and `lastTradeAsOf` remain null because Biquote is used as a quote-data source, not as a centralized trade feed. Explicitly stale or closed quotes and invalid individual ticks are skipped without discarding other valid ticks in the batch.
+6. Biquote `bid`, `ask`, and ISO-8601 `timestamp` map to `bidPrice`, `askPrice`, and `quoteAsOf`. The provider's `time` field is MetaTrader-native display text and is not used as the quote timestamp. FX `lastPrice` and `lastTradeAsOf` remain null because Biquote is used as a quote-data source, not as a centralized trade feed. Explicitly stale or closed quotes and invalid individual ticks are skipped without discarding other valid ticks in the batch.
 7. Provider responses map into the shared, provider-neutral `MarketSnapshot` representation. The refresh service matches snapshots to instrument rows and passes them to `MarketSnapshotPersistenceService`.
 8. The persistence service coordinates writes while `InstrumentRepository` performs the SQL updates on the PostgreSQL `instruments` table.
 

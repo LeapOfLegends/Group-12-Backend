@@ -79,7 +79,8 @@ class BiquoteMarketDataClientTest {
                             "bid": 1.08542,
                             "ask": 1.08558,
                             "last": 1.08550,
-                            "time": "2026-02-24T10:30:00.123456789+02:00",
+                            "timestamp": "2026-02-24T10:30:00.123456789+02:00",
+                            "time": "2026.02.24 10:30:00",
                             "source": "MT5",
                             "type": "Forex",
                             "additionalField": "ignored"
@@ -111,12 +112,12 @@ class BiquoteMarketDataClientTest {
                           "EURUSD": {
                             "bid": 1.08542,
                             "ask": 1.08558,
-                            "time": "2026-02-24T10:30:00Z"
+                            "timestamp": "2026-02-24T10:30:00Z"
                           },
                           "USDJPY": {
                             "bid": 149.10,
                             "ask": 149.12,
-                            "time": "2026-02-24T10:30:01Z"
+                            "timestamp": "2026-02-24T10:30:01Z"
                           }
                         }
                         """, MediaType.APPLICATION_JSON));
@@ -136,17 +137,17 @@ class BiquoteMarketDataClientTest {
                   "EURUSD": {
                     "bid": 1.08542,
                     "ask": 1.08558,
-                    "time": "2026-02-24T10:30:00Z"
+                    "timestamp": "2026-02-24T10:30:00Z"
                   },
                   "USDJPY": {
                     "bid": 149.10,
                     "ask": 149.12,
-                    "time": "2026-02-24T10:30:00Z"
+                    "timestamp": "2026-02-24T10:30:00Z"
                   },
                   "EURCHF": {
                     "bid": 0.95,
                     "ask": 0.96,
-                    "time": "2026-02-24T10:30:00Z"
+                    "timestamp": "2026-02-24T10:30:00Z"
                   }
                 }
                 """, MediaType.APPLICATION_JSON));
@@ -165,12 +166,12 @@ class BiquoteMarketDataClientTest {
                   "EURUSD": {
                     "bid": 1.08542,
                     "ask": 1.08558,
-                    "time": "2026-02-24T10:30:00Z"
+                    "timestamp": "2026-02-24T10:30:00Z"
                   },
                   "USDJPY": {
                     "bid": 149.12,
                     "ask": 149.10,
-                    "time": "2026-02-24T10:30:00Z"
+                    "timestamp": "2026-02-24T10:30:00Z"
                   }
                 }
                 """, MediaType.APPLICATION_JSON));
@@ -189,13 +190,13 @@ class BiquoteMarketDataClientTest {
                   "EURUSD": {
                     "bid": 1.08542,
                     "ask": 1.08558,
-                    "time": "2026-02-24T10:30:00Z",
+                    "timestamp": "2026-02-24T10:30:00Z",
                     "stale": true
                   },
                   "USDJPY": {
                     "bid": 149.10,
                     "ask": 149.12,
-                    "time": "2026-02-24T10:30:00Z",
+                    "timestamp": "2026-02-24T10:30:00Z",
                     "marketState": "closed"
                   }
                 }

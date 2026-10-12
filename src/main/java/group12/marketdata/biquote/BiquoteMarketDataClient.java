@@ -48,7 +48,7 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
             "USD/CAD", "USDCAD",
             "USD/INR", "USDINR"
     );
-    private static final Map<String, String> LEAP_SYMBOLS = BIQUOTE_SYMBOLS.entrySet()
+    private static final Map<String, String> DB_SYMBOLS = BIQUOTE_SYMBOLS.entrySet()
             .stream()
             .collect(Collectors.toUnmodifiableMap(Map.Entry::getValue, Map.Entry::getKey));
     private static final ObjectMapper RESPONSE_MAPPER = new ObjectMapper()
@@ -86,8 +86,8 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
 
         Set<String> requestedProviderSymbols = new TreeSet<>();
         for (MarketDataRequest instrument : instruments) {
-            String leapSymbol = validateInstrument(instrument);
-            requestedProviderSymbols.add(BIQUOTE_SYMBOLS.get(leapSymbol));
+            String dbSymbol = validateInstrument(instrument);
+            requestedProviderSymbols.add(BIQUOTE_SYMBOLS.get(dbSymbol));
         }
 
         String responseBody = executeRequest(() -> restClient.get()
@@ -116,19 +116,19 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
                 return;
             }
 
-            String leapSymbol = LEAP_SYMBOLS.get(providerSymbol);
-            if (leapSymbol == null) {
+            String dbSymbol = DB_SYMBOLS.get(providerSymbol);
+            if (dbSymbol == null) {
                 return;
             }
             try {
                 MarketSnapshot snapshot = mapSnapshot(tick);
                 if (snapshot != null) {
-                    snapshots.put(leapSymbol, snapshot);
+                    snapshots.put(dbSymbol, snapshot);
                 }
             } catch (MarketDataProviderException exception) {
                 LOGGER.warn(
                         "Skipping unusable Biquote market-data snapshot for symbol {}: {}",
-                        leapSymbol,
+                        dbSymbol,
                         exception.getMessage()
                 );
             }
@@ -146,7 +146,7 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
 
         BigDecimal bid = decimalValue(tick, "bid");
         BigDecimal ask = decimalValue(tick, "ask");
-        OffsetDateTime quoteAsOf = timestampValue(tick, "time");
+        OffsetDateTime quoteAsOf = timestampValue(tick, "timestamp");
         if (!isPositive(bid) || !isPositive(ask) || ask.compareTo(bid) < 0
                 || quoteAsOf == null) {
             throw invalidQuote();
