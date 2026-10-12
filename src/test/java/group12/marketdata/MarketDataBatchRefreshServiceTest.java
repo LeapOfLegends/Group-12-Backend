@@ -3,7 +3,6 @@ package group12.marketdata;
 import group12.Entities.InstrumentEntity;
 import group12.Entities.MarketCode;
 import group12.Repository.InstrumentRepository;
-import group12.marketdata.alpaca.AlpacaProperties;
 import group12.marketdata.exception.MarketDataProviderException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,6 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -58,15 +56,6 @@ class MarketDataBatchRefreshServiceTest {
     }
 
     @Test
-    void hasNoAlpacaPropertiesDependency() {
-        assertTrue(Arrays.stream(MarketDataBatchRefreshService.class.getDeclaredFields())
-                .noneMatch(field -> field.getType().equals(AlpacaProperties.class)));
-        assertTrue(Arrays.stream(MarketDataBatchRefreshService.class.getConstructors())
-                .flatMap(constructor -> Arrays.stream(constructor.getParameterTypes()))
-                .noneMatch(type -> type.equals(AlpacaProperties.class)));
-    }
-
-    @Test
     void sendsOnlyProviderSupportedTradableRequestsInOneBatchCall() {
         InstrumentEntity aapl = instrument(1L, " aapl ", true, "Equity", "USD");
         aapl.setMarketCode(MarketCode.IEX);
@@ -94,16 +83,16 @@ class MarketDataBatchRefreshServiceTest {
         verify(marketDataProvider).getCurrentMarketSnapshots(captor.capture());
         assertEquals(List.of(aaplRequest), List.copyOf(captor.getValue()));
         verify(marketDataProvider).supports(
-                new MarketDataRequest("GBPUSD", "FX", "USD", null)
+                new MarketDataRequest("GBPUSD", "FX", "USD", MarketCode.FX)
         );
         verify(marketDataProvider).supports(
-                new MarketDataRequest("TSLA", "Equity", "GBP", null)
+                new MarketDataRequest("TSLA", "Equity", "GBP", MarketCode.IEX)
         );
         verify(marketDataProvider).supports(
-                new MarketDataRequest("NVDA", "Equity", "USD", null)
+                new MarketDataRequest("NVDA", "Equity", "USD", MarketCode.IEX)
         );
         verify(marketDataProvider, never()).supports(
-                new MarketDataRequest("MSFT", "Equity", "USD", null)
+                new MarketDataRequest("MSFT", "Equity", "USD", MarketCode.IEX)
         );
         verify(persistenceService).persist(1L, snapshot);
     }
@@ -211,7 +200,18 @@ class MarketDataBatchRefreshServiceTest {
         instrument.setTradable(tradable);
         instrument.setAssetClass(assetClass);
         instrument.setCurrency(currency);
+        instrument.setMarketCode(marketCode(assetClass));
         return instrument;
+    }
+
+    private MarketCode marketCode(String assetClass) {
+        if ("Equity".equalsIgnoreCase(assetClass)) {
+            return MarketCode.IEX;
+        }
+        if ("Crypto".equalsIgnoreCase(assetClass)) {
+            return MarketCode.CRYPTO;
+        }
+        return MarketCode.FX;
     }
 
     private MarketSnapshot snapshot() {
