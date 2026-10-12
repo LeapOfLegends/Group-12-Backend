@@ -1,5 +1,6 @@
 package group12.marketdata.alpaca;
 
+import group12.Entities.MarketCode;
 import group12.marketdata.MarketDataRequest;
 import group12.marketdata.MarketSnapshot;
 import group12.marketdata.exception.MarketDataProviderException;
@@ -227,7 +228,7 @@ class AlpacaMarketDataBatchClientTest {
     @Test
     void batchRequestRejectsUnsupportedInstrumentWithoutHttp() {
         MarketDataRequest instrument = new MarketDataRequest(
-                "AAPL", "Crypto", "USD", null
+                "AAPL", "Crypto", "USD", MarketCode.CRYPTO
         );
 
         assertThrows(
@@ -238,10 +239,10 @@ class AlpacaMarketDataBatchClientTest {
     }
 
     private MarketDataRequest instrument(String symbol) {
-        return new MarketDataRequest(symbol, "Equity", "USD", null);
+        return new MarketDataRequest(symbol, "Equity", "USD", MarketCode.IEX);
     }
 
     private MarketDataRequest cryptoInstrument(String symbol) {
-        return new MarketDataRequest(symbol, "Crypto", "USD", null);
+        return new MarketDataRequest(symbol, "Crypto", "USD", MarketCode.CRYPTO);
     }
 }

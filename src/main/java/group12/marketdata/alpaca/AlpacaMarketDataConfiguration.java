@@ -11,7 +11,6 @@ import java.net.http.HttpClient;
 
 @Configuration
 @EnableConfigurationProperties(AlpacaProperties.class)
-// sets the configuration for alpaca 
 public class AlpacaMarketDataConfiguration {
 
     @Bean
