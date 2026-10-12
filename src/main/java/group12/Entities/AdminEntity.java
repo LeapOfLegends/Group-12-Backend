@@ -9,6 +9,7 @@ public class AdminEntity {
     private String lastName;
     private String email;
     private String passwordHash;
+    private String role;
     private LocalDateTime createdAt;
 
 
@@ -54,6 +55,14 @@ public class AdminEntity {
 
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 
 

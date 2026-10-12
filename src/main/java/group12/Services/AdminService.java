@@ -46,6 +46,7 @@ public class AdminService {
         admin.setFirstName(request.getFirstName());
         admin.setLastName(request.getLastName());
         admin.setEmail(request.getEmail());
+        admin.setRole(request.getRole());
 
         admin.setPasswordHash(
                 hashPassword(request.getPassword())
@@ -128,6 +129,7 @@ public class AdminService {
         admin.setFirstName(request.getFirstName());
         admin.setLastName(request.getLastName());
         admin.setEmail(request.getEmail());
+        admin.setRole(request.getRole());
 
 
         adminRepository.update(admin);
@@ -182,6 +184,7 @@ public class AdminService {
                 admin.getFirstName(),
                 admin.getLastName(),
                 admin.getEmail(),
+                admin.getRole(),
                 admin.getCreatedAt()
         );
     }
