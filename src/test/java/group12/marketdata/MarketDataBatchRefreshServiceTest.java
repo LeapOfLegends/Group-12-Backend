@@ -2,7 +2,9 @@ package group12.marketdata;
 
 import group12.Entities.InstrumentEntity;
 import group12.Entities.MarketCode;
+import group12.Entities.MarketStatus;
 import group12.Repository.InstrumentRepository;
+import group12.Services.MarketService;
 import group12.marketdata.exception.MarketDataProviderException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +46,9 @@ class MarketDataBatchRefreshServiceTest {
     @Mock
     private MarketSnapshotPersistenceService persistenceService;
 
+        @Mock
+        private MarketService marketService;
+
     private MarketDataBatchRefreshService service;
 
     @BeforeEach
@@ -51,8 +56,11 @@ class MarketDataBatchRefreshServiceTest {
         service = new MarketDataBatchRefreshService(
                 instrumentRepository,
                 marketDataProvider,
-                persistenceService
+                persistenceService,
+                marketService
         );
+        when(marketService.getMarketStatusByMarketCode(MarketCode.IEX))
+                .thenReturn(MarketStatus.OPEN);
     }
 
     @Test
@@ -173,6 +181,30 @@ class MarketDataBatchRefreshServiceTest {
         verify(persistenceService).persist(2L, snapshot);
         assertTrue(output.getOut().contains("instrument 1 (AAPL)"));
         assertTrue(output.getOut().contains("IllegalStateException: database failure"));
+    }
+
+    @Test
+    void closedIexSkipsEquityButKeepsCryptoPolling() {
+        when(marketService.getMarketStatusByMarketCode(MarketCode.IEX))
+                .thenReturn(MarketStatus.CLOSED);
+        InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
+        InstrumentEntity btc = instrument(2L, "BTC/USD", true, "Crypto", "USD");
+        when(instrumentRepository.findTradableInstruments()).thenReturn(List.of(aapl, btc));
+        MarketSnapshot snapshot = snapshot();
+        when(marketDataProvider.supports(new MarketDataRequest(
+                "BTC/USD", "Crypto", "USD", MarketCode.CRYPTO
+        ))).thenReturn(true);
+        when(marketDataProvider.getCurrentMarketSnapshots(any()))
+                .thenReturn(Map.of("BTC/USD", snapshot));
+        when(persistenceService.persist(2L, snapshot)).thenReturn(true);
+
+        assertEquals(1, service.refreshEligibleInstruments());
+
+        verify(marketDataProvider, never()).supports(new MarketDataRequest(
+                "AAPL", "Equity", "USD", MarketCode.IEX
+        ));
+        verify(persistenceService, never()).persist(1L, snapshot);
+        verify(persistenceService).persist(2L, snapshot);
     }
 
     private void support(InstrumentEntity... instruments) {
