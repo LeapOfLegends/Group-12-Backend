@@ -1,5 +1,6 @@
 package group12.marketdata.alpaca;
 
+import group12.Entities.MarketCode;
 import group12.marketdata.MarketDataRequest;
 import group12.marketdata.MarketSnapshot;
 import org.junit.jupiter.api.Test;
@@ -57,7 +58,7 @@ class AlpacaLiveSmokeTest {
     }
 
     private MarketDataRequest aapl() {
-        return new MarketDataRequest("AAPL", "Equity", "USD", null);
+        return new MarketDataRequest("AAPL", "Equity", "USD", MarketCode.IEX);
     }
 
     private void assertPositive(BigDecimal value) {

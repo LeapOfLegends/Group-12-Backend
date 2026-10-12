@@ -1,5 +1,6 @@
 package group12.marketdata.alpaca;
 
+import group12.Entities.MarketCode;
 import group12.marketdata.MarketDataRequest;
 import group12.marketdata.exception.MarketDataConfigurationException;
 import group12.marketdata.exception.MarketDataProviderException;
@@ -30,6 +31,8 @@ class AlpacaMarketDataClientTest {
 
     private static final String URL =
             "https://data.alpaca.markets/v2/stocks/snapshots?symbols=AAPL&feed=iex";
+    private static final String BTC_URL =
+            "https://data.alpaca.markets/v1beta3/crypto/us/snapshots?symbols=BTC/USD";
 
     private AlpacaProperties properties;
     private MockRestServiceServer server;
@@ -101,7 +104,9 @@ class AlpacaMarketDataClientTest {
     @Test
     void nonEquityOrNonUsdInstrumentIsRejectedEvenIfItsSymbolIsConfigured() {
         properties.setSupportedUsEquitySymbols(Set.of("AAPL", "GBPUSD"));
-        MarketDataRequest instrument = new MarketDataRequest("GBPUSD", "FX", "GBP", null);
+        MarketDataRequest instrument = new MarketDataRequest(
+                "GBPUSD", "FX", "GBP", MarketCode.FX
+        );
 
         assertThrows(
                 MarketDataProviderException.class,
@@ -116,10 +121,59 @@ class AlpacaMarketDataClientTest {
         assertFalse(client.supports(instrument("MSFT")));
         assertTrue(client.supports(cryptoInstrument(" btc/usd ")));
         assertFalse(client.supports(cryptoInstrument("DOGE/USD")));
-        assertFalse(client.supports(new MarketDataRequest("BTC/USD", "Crypto", "EUR", null)));
-        assertFalse(client.supports(new MarketDataRequest("AAPL", "Crypto", "USD", null)));
-        assertFalse(client.supports(new MarketDataRequest("AAPL", "Equity", "GBP", null)));
+        assertFalse(client.supports(new MarketDataRequest(
+                "BTC/USD", "Crypto", "EUR", MarketCode.CRYPTO
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "AAPL", "Crypto", "USD", MarketCode.CRYPTO
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "AAPL", "Equity", "GBP", MarketCode.IEX
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "AAPL", "Equity", "USD", MarketCode.LSE
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "BTC/USD", "Crypto", "USD", MarketCode.IEX
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "AAPL", "Equity", "USD", null
+        )));
         assertFalse(client.supports(null));
+    }
+
+    @Test
+    void cryptoOnlyRequestDoesNotRequireIexFeed() {
+        properties.setFeed("unsupported-equity-feed");
+        server.expect(requestTo(BTC_URL))
+                .andRespond(withSuccess("{\"snapshots\":{}}", MediaType.APPLICATION_JSON));
+
+        assertTrue(client.getCurrentMarketSnapshots(
+                List.of(cryptoInstrument("BTC/USD"))
+        ).isEmpty());
+        server.verify();
+    }
+
+    @Test
+    void equityRequestRejectsUnsupportedFeedWithoutHttpRequest() {
+        properties.setFeed("unsupported-equity-feed");
+
+        assertThrows(MarketDataConfigurationException.class, this::requestAapl);
+        server.verify();
+    }
+
+    @Test
+    void mixedRequestRejectsUnsupportedEquityFeedWithoutHttpRequest() {
+        properties.setFeed("unsupported-equity-feed");
+
+        assertThrows(
+                MarketDataConfigurationException.class,
+                () -> client.getCurrentMarketSnapshots(List.of(
+                        instrument("AAPL"),
+                        cryptoInstrument("BTC/USD")
+                ))
+        );
+        server.verify();
     }
 
     @Test
@@ -158,10 +212,10 @@ class AlpacaMarketDataClientTest {
     }
 
     private MarketDataRequest instrument(String symbol) {
-        return new MarketDataRequest(symbol, "Equity", "USD", null);
+        return new MarketDataRequest(symbol, "Equity", "USD", MarketCode.IEX);
     }
 
     private MarketDataRequest cryptoInstrument(String symbol) {
-        return new MarketDataRequest(symbol, "Crypto", "USD", null);
+        return new MarketDataRequest(symbol, "Crypto", "USD", MarketCode.CRYPTO);
     }
 }

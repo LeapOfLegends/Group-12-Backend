@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import group12.Entities.MarketCode;
 import group12.marketdata.MarketDataProvider;
 import group12.marketdata.MarketDataRequest;
 import group12.marketdata.MarketSnapshot;
@@ -37,7 +38,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
 @Component
-// handles the retrieval of market data snapshots from alpaca by building/sending HTTP requests, deserializing responses, and returning data
 public class AlpacaMarketDataClient implements MarketDataProvider {
 
     private static final String API_KEY_HEADER = "APCA-API-KEY-ID";
@@ -58,21 +58,19 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         this.properties = properties;
     }
 
-    // checks if this provider supports the given instrument and configured symbol
     @Override
     public boolean supports(MarketDataRequest instrument) {
         if (instrument == null) {
             return false;
         }
         String symbol = normalizeSymbol(instrument.symbol());
-        if (symbol.isBlank() || !"USD".equalsIgnoreCase(instrument.currency())) {
+        if (symbol.isBlank()) {
             return false;
         }
         return isSupportedUsEquity(instrument, symbol)
                 || isSupportedCrypto(instrument, symbol);
     }
 
-    // fetches current market snapshots (quotes and trades) for multiple instruments from Alpaca
     @Override
     public Map<String, MarketSnapshot> getCurrentMarketSnapshots(
             Collection<MarketDataRequest> instruments
@@ -80,18 +78,20 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         if (instruments == null || instruments.isEmpty()) {
             return Map.of();
         }
-        validateConfiguration();
+        validateCredentials();
 
-        // collect, validate, and separate unique symbols by Alpaca endpoint
         Set<String> equitySymbols = new TreeSet<>();
         Set<String> cryptoSymbols = new TreeSet<>();
         for (MarketDataRequest instrument : instruments) {
             String symbol = validateInstrument(instrument);
             if (isSupportedUsEquity(instrument, symbol)) {
                 equitySymbols.add(symbol);
-            } else {
+            } else if (isSupportedCrypto(instrument, symbol)) {
                 cryptoSymbols.add(symbol);
             }
+        }
+        if (!equitySymbols.isEmpty()) {
+            validateEquityFeed();
         }
         Map<String, MarketSnapshot> snapshots = new LinkedHashMap<>();
         snapshots.putAll(fetchEquitySnapshots(equitySymbols));
@@ -101,11 +101,15 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
 
     private boolean isSupportedUsEquity(MarketDataRequest instrument, String symbol) {
         return "Equity".equalsIgnoreCase(instrument.assetClass())
+                && "USD".equalsIgnoreCase(instrument.currency())
+                && instrument.marketCode() == MarketCode.IEX
                 && properties.getSupportedUsEquitySymbols().contains(symbol);
     }
 
     private boolean isSupportedCrypto(MarketDataRequest instrument, String symbol) {
         return "Crypto".equalsIgnoreCase(instrument.assetClass())
+                && "USD".equalsIgnoreCase(instrument.currency())
+                && instrument.marketCode() == MarketCode.CRYPTO
                 && properties.getSupportedCryptoSymbols().contains(symbol);
     }
 
@@ -174,6 +178,7 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
             try {
                 snapshots.put(symbol, mapSnapshot(symbol, data));
             } catch (MarketDataProviderException exception) {
+                // One unusable symbol should not discard valid snapshots in the same batch.
                 LOGGER.warn(
                         "Skipping unusable market-data snapshot for symbol {}: {}",
                         symbol,
@@ -182,7 +187,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
             }
         });
 
-        // log warnings for requested symbols missing from provider response
         requestedSymbols.stream()
                 .filter(symbol -> !returnedSymbols.contains(symbol))
                 .forEach(symbol -> LOGGER.warn(
@@ -193,7 +197,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         return Map.copyOf(snapshots);
     }
 
-    // parses JSON response body from Alpaca API
     private JsonNode parseResponse(String responseBody) {
         if (responseBody == null) {
             throw malformedResponse(null);
@@ -209,7 +212,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         }
     }
 
-    // creates a malformed response exception with optional cause
     private MarketDataProviderException malformedResponse(Throwable cause) {
         String message = "Market-data provider returned a malformed batch response";
         return cause == null
@@ -217,7 +219,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
                 : new MarketDataProviderException(message, cause);
     }
 
-    // validates that the instrument is supported and returns its normalized symbol
     private String validateInstrument(MarketDataRequest instrument) {
         String symbol = instrument == null ? "" : normalizeSymbol(instrument.symbol());
         if (!supports(instrument)) {
@@ -229,14 +230,16 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         return symbol;
     }
 
-    // validates that Alpaca API credentials and feed settings are properly configured
-    private void validateConfiguration() {
+    private void validateCredentials() {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()
                 || properties.getSecretKey() == null || properties.getSecretKey().isBlank()) {
             throw new MarketDataConfigurationException(
                     "Alpaca market-data credentials are not configured"
             );
         }
+    }
+
+    private void validateEquityFeed() {
         if (!"iex".equalsIgnoreCase(properties.getFeed())) {
             throw new MarketDataConfigurationException(
                     "Alpaca market-data feed must be configured as iex"
@@ -244,7 +247,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         }
     }
 
-    // converts API response data into a MarketSnapshot object with quote and trade info
     private MarketSnapshot mapSnapshot(String symbol, JsonNode data) {
         if (data == null || !data.isObject()) {
             throw unavailableSnapshot(symbol);
@@ -264,7 +266,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         );
     }
 
-    // extracts bid/ask prices and timestamp from quote JSON data
     private QuoteValues mapQuote(JsonNode quote) {
         if (quote == null || quote.isNull()) {
             return null;
@@ -285,7 +286,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         );
     }
 
-    // extracts trade price and timestamp from trade JSON data
     private TradeValues mapTrade(JsonNode trade) {
         if (trade == null || trade.isNull()) {
             return null;
@@ -300,7 +300,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         return new TradeValues(price, normalizeForPostgres(observedAt));
     }
 
-    // safely extracts a numeric value from a JSON field
     private BigDecimal decimalValue(JsonNode parent, String fieldName) {
         if (parent == null || !parent.isObject()) {
             return null;
@@ -309,7 +308,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         return value != null && value.isNumber() ? value.decimalValue() : null;
     }
 
-    // safely extracts and parses a timestamp value from a JSON field
     private OffsetDateTime timestampValue(JsonNode parent, String fieldName) {
         if (parent == null || !parent.isObject()) {
             return null;
@@ -325,25 +323,22 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         }
     }
 
-    // creates an exception for missing market data
     private MarketDataProviderException unavailableSnapshot(String symbol) {
         return new MarketDataProviderException(
                 "No usable market data is available for instrument: " + symbol
         );
     }
 
-    // checks if a price is positive and non-null
     private boolean isPositive(BigDecimal price) {
         return price != null && price.signum() > 0;
     }
 
-    // converts timestamp to UTC and truncates nanoseconds to microsecond precision for PostgreSQL
+    // PostgreSQL stores these timestamps at microsecond precision.
     private OffsetDateTime normalizeForPostgres(OffsetDateTime timestamp) {
         OffsetDateTime utc = timestamp.withOffsetSameInstant(ZoneOffset.UTC);
         return utc.withNano((utc.getNano() / 1_000) * 1_000);
     }
 
-    // checks if the exception chain contains a timeout exception
     private boolean causedByTimeout(Throwable throwable) {
         Throwable current = throwable;
         while (current != null) {
@@ -357,7 +352,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         return false;
     }
 
-    // executes an HTTP request and handles various error scenarios
     private <T> T executeRequest(Supplier<T> request) {
         try {
             return request.get();
@@ -382,12 +376,10 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         }
     }
 
-    // checks if HTTP status indicates authentication or authorization failure
     private boolean isAuthenticationFailure(HttpStatusCode status) {
         return status.value() == 401 || status.value() == 403;
     }
 
-    // throws exception for authentication/authorization failures
     private void throwAuthenticationFailure(
             org.springframework.http.HttpRequest request,
             org.springframework.http.client.ClientHttpResponse response
@@ -397,7 +389,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         );
     }
 
-    // throws exception when API rate limit is exceeded
     private void throwRateLimitFailure(
             org.springframework.http.HttpRequest request,
             org.springframework.http.client.ClientHttpResponse response
@@ -405,7 +396,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         throw new MarketDataRateLimitException();
     }
 
-    // throws exception for server errors (5xx)
     private void throwServerFailure(
             org.springframework.http.HttpRequest request,
             org.springframework.http.client.ClientHttpResponse response
@@ -413,7 +403,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         throw new MarketDataProviderException("Market-data provider is unavailable");
     }
 
-    // throws exception for client errors (4xx)
     private void throwClientFailure(
             org.springframework.http.HttpRequest request,
             org.springframework.http.client.ClientHttpResponse response
@@ -421,7 +410,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         throw new MarketDataProviderException("Market-data provider rejected the request");
     }
 
-    // normalizes symbol by trimming whitespace and converting to uppercase
     private String normalizeSymbol(String symbol) {
         return symbol == null ? "" : symbol.trim().toUpperCase(Locale.ROOT);
     }

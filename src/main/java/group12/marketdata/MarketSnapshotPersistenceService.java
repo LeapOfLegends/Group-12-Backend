@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-// service for writing market snapshots to the database
 public class MarketSnapshotPersistenceService {
 
     private final InstrumentRepository instrumentRepository;
