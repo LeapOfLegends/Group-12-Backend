@@ -93,12 +93,6 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
                 cryptoSymbols.add(symbol);
             }
         }
-        if (equitySymbols.size() + cryptoSymbols.size() > 50) {
-            throw new MarketDataConfigurationException(
-                    "A batch market-data request cannot contain more than 50 symbols"
-            );
-        }
-
         Map<String, MarketSnapshot> snapshots = new LinkedHashMap<>();
         snapshots.putAll(fetchEquitySnapshots(equitySymbols));
         snapshots.putAll(fetchCryptoSnapshots(cryptoSymbols));

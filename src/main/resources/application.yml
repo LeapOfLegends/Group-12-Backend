@@ -56,47 +56,50 @@ alpaca:
         - BRK.B
         - LLY
         - AMD
-        - JPM
-        - WMT
-        - V
-        - XOM
-        - INTC
-        - JNJ
-        - MA
-        - ABBV
-        - PLTR
-        - CSCO
-        - LRCX
-        - AMAT
-        - ORCL
-        - COST
-        - CVX
-        - CAT
-        - BAC
-        - KO
-        - MRK
-        - DELL
-        - PG
-        - UNH
-        - GE
-        - PANW
-        - MS
-        - PM
-        - NFLX
-        - HD
-        - CRWD
-        - SNDK
-        - KLAC
-        - GS
-        - GEV
-        - ANET
-        - TXN
-        - RTX
-        - TMO
+#        - JPM
+#        - WMT
+#        - V
+#        - XOM
+#        - INTC
+#        - JNJ
+#        - MA
+#        - ABBV
+#        - PLTR
+#        - CSCO
+#        - LRCX
+#        - AMAT
+#        - ORCL
+#        - COST
+#        - CVX
+#        - CAT
+#        - BAC
+#        - KO
+#        - MRK
+#        - DELL
+#        - PG
+#        - UNH
+#        - GE
+#        - PANW
+#        - MS
+#        - PM
+#        - NFLX
+#        - HD
+#        - CRWD
+#        - SNDK
+#        - KLAC
+#        - GS
+#        - GEV
+#        - ANET
+#        - TXN
+#        - RTX
+#        - TMO
     supported-crypto-symbols:
         - BTC/USD
         - ETH/USD
         - SOL/USD
+        - XRP/USD
+        - DOGE/USD
+        - ADA/USD
 
 market-data:
     refresh:

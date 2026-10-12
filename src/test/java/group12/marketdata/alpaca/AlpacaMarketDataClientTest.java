@@ -123,7 +123,7 @@ class AlpacaMarketDataClientTest {
     }
 
     @Test
-    void providerEnforcesItsFiftySymbolBatchLimitWithoutHttpRequest() {
+    void batchRequestWithMoreThanFiftySymbolsReachesProvider() {
         Set<String> symbols = IntStream.rangeClosed(1, 51)
                 .mapToObj(number -> "SYM" + number)
                 .collect(java.util.stream.Collectors.toSet());
@@ -131,11 +131,16 @@ class AlpacaMarketDataClientTest {
         List<MarketDataRequest> requests = symbols.stream()
                 .map(this::instrument)
                 .toList();
+        String symbolsParameter = symbols.stream()
+                .sorted()
+                .collect(java.util.stream.Collectors.joining(","));
+        String url = "https://data.alpaca.markets/v2/stocks/snapshots?symbols="
+                + symbolsParameter
+                + "&feed=iex";
+        server.expect(requestTo(url))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
-        assertThrows(
-                MarketDataConfigurationException.class,
-                () -> client.getCurrentMarketSnapshots(requests)
-        );
+        assertTrue(client.getCurrentMarketSnapshots(requests).isEmpty());
         server.verify();
     }
 
