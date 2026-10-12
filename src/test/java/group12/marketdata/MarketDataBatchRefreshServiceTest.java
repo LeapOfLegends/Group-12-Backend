@@ -1,6 +1,7 @@
 package group12.marketdata;
 
 import group12.Entities.InstrumentEntity;
+import group12.Entities.MarketCode;
 import group12.Repository.InstrumentRepository;
 import group12.marketdata.alpaca.AlpacaProperties;
 import group12.marketdata.exception.MarketDataProviderException;
@@ -68,6 +69,7 @@ class MarketDataBatchRefreshServiceTest {
     @Test
     void sendsOnlyProviderSupportedTradableRequestsInOneBatchCall() {
         InstrumentEntity aapl = instrument(1L, " aapl ", true, "Equity", "USD");
+        aapl.setMarketCode(MarketCode.IEX);
         InstrumentEntity nonTradable = instrument(2L, "MSFT", false, "Equity", "USD");
         InstrumentEntity fx = instrument(3L, "GBPUSD", true, "FX", "USD");
         InstrumentEntity nonUsd = instrument(4L, "TSLA", true, "Equity", "GBP");
@@ -75,7 +77,9 @@ class MarketDataBatchRefreshServiceTest {
         when(instrumentRepository.findTradableInstruments()).thenReturn(
                 List.of(aapl, nonTradable, fx, nonUsd, unsupported)
         );
-        MarketDataRequest aaplRequest = new MarketDataRequest(" aapl ", "Equity", "USD");
+        MarketDataRequest aaplRequest = new MarketDataRequest(
+                " aapl ", "Equity", "USD", MarketCode.IEX
+        );
         when(marketDataProvider.supports(aaplRequest)).thenReturn(true);
         MarketSnapshot snapshot = snapshot();
         when(marketDataProvider.getCurrentMarketSnapshots(any()))
@@ -89,11 +93,17 @@ class MarketDataBatchRefreshServiceTest {
                 ArgumentCaptor.forClass(Collection.class);
         verify(marketDataProvider).getCurrentMarketSnapshots(captor.capture());
         assertEquals(List.of(aaplRequest), List.copyOf(captor.getValue()));
-        verify(marketDataProvider).supports(new MarketDataRequest("GBPUSD", "FX", "USD"));
-        verify(marketDataProvider).supports(new MarketDataRequest("TSLA", "Equity", "GBP"));
-        verify(marketDataProvider).supports(new MarketDataRequest("NVDA", "Equity", "USD"));
+        verify(marketDataProvider).supports(
+                new MarketDataRequest("GBPUSD", "FX", "USD", null)
+        );
+        verify(marketDataProvider).supports(
+                new MarketDataRequest("TSLA", "Equity", "GBP", null)
+        );
+        verify(marketDataProvider).supports(
+                new MarketDataRequest("NVDA", "Equity", "USD", null)
+        );
         verify(marketDataProvider, never()).supports(
-                new MarketDataRequest("MSFT", "Equity", "USD")
+                new MarketDataRequest("MSFT", "Equity", "USD", null)
         );
         verify(persistenceService).persist(1L, snapshot);
     }
@@ -181,7 +191,8 @@ class MarketDataBatchRefreshServiceTest {
             when(marketDataProvider.supports(new MarketDataRequest(
                     instrument.getSymbol(),
                     instrument.getAssetClass(),
-                    instrument.getCurrency()
+                    instrument.getCurrency(),
+                    instrument.getMarketCode()
             ))).thenReturn(true);
         }
     }

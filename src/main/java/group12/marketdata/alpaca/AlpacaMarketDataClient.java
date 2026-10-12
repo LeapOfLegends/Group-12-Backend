@@ -32,9 +32,9 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 @Component
 // handles the retrieval of market data snapshots from alpaca by building/sending HTTP requests, deserializing responses, and returning data
@@ -58,17 +58,18 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         this.properties = properties;
     }
 
-    // checks if this provider supports the given instrument (US equity, USD, valid symbol)
+    // checks if this provider supports the given instrument and configured symbol
     @Override
     public boolean supports(MarketDataRequest instrument) {
         if (instrument == null) {
             return false;
         }
         String symbol = normalizeSymbol(instrument.symbol());
-        return !symbol.isBlank()
-                && "Equity".equalsIgnoreCase(instrument.assetClass())
-                && "USD".equalsIgnoreCase(instrument.currency())
-                && properties.getSupportedUsEquitySymbols().contains(symbol);
+        if (symbol.isBlank() || !"USD".equalsIgnoreCase(instrument.currency())) {
+            return false;
+        }
+        return isSupportedUsEquity(instrument, symbol)
+                || isSupportedCrypto(instrument, symbol);
     }
 
     // fetches current market snapshots (quotes and trades) for multiple instruments from Alpaca
@@ -81,22 +82,48 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         }
         validateConfiguration();
 
-        // collect and validate unique symbols
-        Set<String> uniqueSymbols = instruments.stream()
-                .map(this::validateInstrument)
-                .collect(Collectors.toCollection(java.util.TreeSet::new));
-        if (uniqueSymbols.size() > 50) {
+        // collect, validate, and separate unique symbols by Alpaca endpoint
+        Set<String> equitySymbols = new TreeSet<>();
+        Set<String> cryptoSymbols = new TreeSet<>();
+        for (MarketDataRequest instrument : instruments) {
+            String symbol = validateInstrument(instrument);
+            if (isSupportedUsEquity(instrument, symbol)) {
+                equitySymbols.add(symbol);
+            } else {
+                cryptoSymbols.add(symbol);
+            }
+        }
+        if (equitySymbols.size() + cryptoSymbols.size() > 50) {
             throw new MarketDataConfigurationException(
                     "A batch market-data request cannot contain more than 50 symbols"
             );
         }
 
-        // execute API request with error handling for auth, rate limits, and server errors
-        String symbols = String.join(",", uniqueSymbols);
+        Map<String, MarketSnapshot> snapshots = new LinkedHashMap<>();
+        snapshots.putAll(fetchEquitySnapshots(equitySymbols));
+        snapshots.putAll(fetchCryptoSnapshots(cryptoSymbols));
+        return Map.copyOf(snapshots);
+    }
+
+    private boolean isSupportedUsEquity(MarketDataRequest instrument, String symbol) {
+        return "Equity".equalsIgnoreCase(instrument.assetClass())
+                && properties.getSupportedUsEquitySymbols().contains(symbol);
+    }
+
+    private boolean isSupportedCrypto(MarketDataRequest instrument, String symbol) {
+        return "Crypto".equalsIgnoreCase(instrument.assetClass())
+                && properties.getSupportedCryptoSymbols().contains(symbol);
+    }
+
+    private Map<String, MarketSnapshot> fetchEquitySnapshots(Set<String> symbols) {
+        if (symbols.isEmpty()) {
+            return Map.of();
+        }
+        String symbolsParameter = String.join(",", symbols);
         String responseBody = executeRequest(() -> restClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v2/stocks/snapshots")
-                        .queryParam("symbols", symbols)
+                        .queryParam("symbols", symbolsParameter)
                         .queryParam("feed", properties.getFeed())
                         .build())
                 .header(API_KEY_HEADER, properties.getApiKey())
@@ -107,18 +134,46 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
                 .onStatus(HttpStatusCode::is5xxServerError, this::throwServerFailure)
                 .onStatus(HttpStatusCode::is4xxClientError, this::throwClientFailure)
                 .body(String.class));
+        return mapSnapshots(parseResponse(responseBody), symbols);
+    }
 
-        // parse JSON response and map to snapshot objects
-        JsonNode response = parseResponse(responseBody);
+    private Map<String, MarketSnapshot> fetchCryptoSnapshots(Set<String> symbols) {
+        if (symbols.isEmpty()) {
+            return Map.of();
+        }
+        String symbolsParameter = String.join(",", symbols);
+        String responseBody = executeRequest(() -> restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1beta3/crypto/us/snapshots")
+                        .queryParam("symbols", symbolsParameter)
+                        .build())
+                .header(API_KEY_HEADER, properties.getApiKey())
+                .header(SECRET_KEY_HEADER, properties.getSecretKey())
+                .retrieve()
+                .onStatus(this::isAuthenticationFailure, this::throwAuthenticationFailure)
+                .onStatus(status -> status.value() == 429, this::throwRateLimitFailure)
+                .onStatus(HttpStatusCode::is5xxServerError, this::throwServerFailure)
+                .onStatus(HttpStatusCode::is4xxClientError, this::throwClientFailure)
+                .body(String.class));
 
-        // process returned snapshots, skipping invalid entries
+        JsonNode snapshotsNode = parseResponse(responseBody).get("snapshots");
+        if (snapshotsNode == null || !snapshotsNode.isObject()) {
+            throw malformedResponse(null);
+        }
+        return mapSnapshots(snapshotsNode, symbols);
+    }
+
+    private Map<String, MarketSnapshot> mapSnapshots(
+            JsonNode response,
+            Set<String> requestedSymbols
+    ) {
         Map<String, MarketSnapshot> snapshots = new LinkedHashMap<>();
         Set<String> returnedSymbols = new LinkedHashSet<>();
         response.properties().forEach(entry -> {
             String responseSymbol = entry.getKey();
             JsonNode data = entry.getValue();
             String symbol = normalizeSymbol(responseSymbol);
-            if (!uniqueSymbols.contains(symbol)) {
+            if (!requestedSymbols.contains(symbol)) {
                 return;
             }
             returnedSymbols.add(symbol);
@@ -134,7 +189,7 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         });
 
         // log warnings for requested symbols missing from provider response
-        uniqueSymbols.stream()
+        requestedSymbols.stream()
                 .filter(symbol -> !returnedSymbols.contains(symbol))
                 .forEach(symbol -> LOGGER.warn(
                         "Skipping unusable market-data snapshot for symbol {}: "
@@ -173,7 +228,7 @@ public class AlpacaMarketDataClient implements MarketDataProvider {
         String symbol = instrument == null ? "" : normalizeSymbol(instrument.symbol());
         if (!supports(instrument)) {
             throw new MarketDataProviderException(
-                    "Instrument is not supported by the configured US equity market-data feed: "
+                    "Instrument is not supported by the configured Alpaca market-data feed: "
                             + (symbol.isBlank() ? "<missing>" : symbol)
             );
         }

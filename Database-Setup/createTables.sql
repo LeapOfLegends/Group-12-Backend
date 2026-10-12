@@ -16,7 +16,7 @@ CREATE TABLE markets (
 
 CREATE TABLE instruments (
 	instrument_id BIGSERIAL PRIMARY KEY,
-    market_id BIGINT REFERENCES markets(market_id),
+    market_id BIGINT REFERENCES markets(market_id) NOT NULL,
     symbol VARCHAR(20) NOT NULL,
     instrument_name VARCHAR(100) NOT NULL,
     asset_class VARCHAR(100) NOT NULL,

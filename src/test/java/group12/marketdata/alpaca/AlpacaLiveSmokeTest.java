@@ -57,7 +57,7 @@ class AlpacaLiveSmokeTest {
     }
 
     private MarketDataRequest aapl() {
-        return new MarketDataRequest("AAPL", "Equity", "USD");
+        return new MarketDataRequest("AAPL", "Equity", "USD", null);
     }
 
     private void assertPositive(BigDecimal value) {

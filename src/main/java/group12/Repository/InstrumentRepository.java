@@ -24,12 +24,14 @@ public interface InstrumentRepository {
     List<InstrumentEntity> findAll();
 
     @Select("""
-        SELECT instrument_id, market_id, symbol, instrument_name, asset_class,
-               currency, is_tradable AS tradable, bid_price, ask_price, last_price,
-               quote_as_of, last_trade_as_of
-        FROM instruments
-        WHERE is_tradable = TRUE
-        ORDER BY symbol, instrument_id
+        SELECT i.instrument_id, i.market_id, m.market_code, i.symbol,
+               i.instrument_name, i.asset_class, i.currency,
+               i.is_tradable AS tradable, i.bid_price, i.ask_price,
+               i.last_price, i.quote_as_of, i.last_trade_as_of
+        FROM instruments i
+        JOIN markets m ON m.market_id = i.market_id
+        WHERE i.is_tradable = TRUE
+        ORDER BY i.symbol, i.instrument_id
         """)
     List<InstrumentEntity> findTradableInstruments();
 

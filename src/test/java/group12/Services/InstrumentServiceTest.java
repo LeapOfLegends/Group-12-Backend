@@ -1,6 +1,7 @@
 package group12.Services;
 
 import group12.Entities.InstrumentEntity;
+import group12.Entities.MarketCode;
 import group12.Repository.InstrumentRepository;
 import group12.dto.InstrumentDTO;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ class InstrumentServiceTest {
         InstrumentEntity entity = new InstrumentEntity(
                 1L,
                 1L,
+                MarketCode.IEX,
                 "AAPL",
                 "Apple Inc.",
                 "Equity",

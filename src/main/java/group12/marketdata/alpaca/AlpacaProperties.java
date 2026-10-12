@@ -19,6 +19,7 @@ public class AlpacaProperties {
     private Duration connectTimeout = Duration.ofSeconds(2);
     private Duration readTimeout = Duration.ofSeconds(5);
     private Set<String> supportedUsEquitySymbols = new LinkedHashSet<>();
+    private Set<String> supportedCryptoSymbols = new LinkedHashSet<>();
 
     public String getApiKey() {
         return apiKey;
@@ -73,7 +74,19 @@ public class AlpacaProperties {
     }
 
     public void setSupportedUsEquitySymbols(Set<String> symbols) {
-        supportedUsEquitySymbols = symbols == null
+        supportedUsEquitySymbols = normalizeSymbols(symbols);
+    }
+
+    public Set<String> getSupportedCryptoSymbols() {
+        return Set.copyOf(supportedCryptoSymbols);
+    }
+
+    public void setSupportedCryptoSymbols(Set<String> symbols) {
+        supportedCryptoSymbols = normalizeSymbols(symbols);
+    }
+
+    private Set<String> normalizeSymbols(Set<String> symbols) {
+        return symbols == null
                 ? new LinkedHashSet<>()
                 : symbols.stream()
                         .filter(symbol -> symbol != null && !symbol.isBlank())

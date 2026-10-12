@@ -42,6 +42,7 @@ class AlpacaMarketDataClientTest {
         properties.setSecretKey("test-secret-key");
         properties.setFeed("iex");
         properties.setSupportedUsEquitySymbols(Set.of("AAPL"));
+        properties.setSupportedCryptoSymbols(Set.of(" btc/usd ", "ETH/USD", "SOL/USD"));
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl("https://data.alpaca.markets");
@@ -100,7 +101,7 @@ class AlpacaMarketDataClientTest {
     @Test
     void nonEquityOrNonUsdInstrumentIsRejectedEvenIfItsSymbolIsConfigured() {
         properties.setSupportedUsEquitySymbols(Set.of("AAPL", "GBPUSD"));
-        MarketDataRequest instrument = new MarketDataRequest("GBPUSD", "FX", "GBP");
+        MarketDataRequest instrument = new MarketDataRequest("GBPUSD", "FX", "GBP", null);
 
         assertThrows(
                 MarketDataProviderException.class,
@@ -113,8 +114,11 @@ class AlpacaMarketDataClientTest {
     void supportIsDeterminedFromProviderNeutralAttributesAndAlpacaAllowlist() {
         assertTrue(client.supports(instrument(" aapl ")));
         assertFalse(client.supports(instrument("MSFT")));
-        assertFalse(client.supports(new MarketDataRequest("AAPL", "Crypto", "USD")));
-        assertFalse(client.supports(new MarketDataRequest("AAPL", "Equity", "GBP")));
+        assertTrue(client.supports(cryptoInstrument(" btc/usd ")));
+        assertFalse(client.supports(cryptoInstrument("DOGE/USD")));
+        assertFalse(client.supports(new MarketDataRequest("BTC/USD", "Crypto", "EUR", null)));
+        assertFalse(client.supports(new MarketDataRequest("AAPL", "Crypto", "USD", null)));
+        assertFalse(client.supports(new MarketDataRequest("AAPL", "Equity", "GBP", null)));
         assertFalse(client.supports(null));
     }
 
@@ -149,6 +153,10 @@ class AlpacaMarketDataClientTest {
     }
 
     private MarketDataRequest instrument(String symbol) {
-        return new MarketDataRequest(symbol, "Equity", "USD");
+        return new MarketDataRequest(symbol, "Equity", "USD", null);
+    }
+
+    private MarketDataRequest cryptoInstrument(String symbol) {
+        return new MarketDataRequest(symbol, "Crypto", "USD", null);
     }
 }
