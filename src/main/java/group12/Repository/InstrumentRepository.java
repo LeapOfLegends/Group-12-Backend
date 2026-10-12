@@ -53,6 +53,13 @@ public interface InstrumentRepository {
         """)
     Optional<InstrumentEntity> findBySymbol(@Param("symbol") String symbol);
 
+    @Select("""
+            SELECT market_id
+            FROM instruments
+            WHERE symbol = #{symbol}
+            """)
+    Long getMarketIdBySymbol(@Param("symbol") String symbol);
+
     @Update("""
         UPDATE instruments
         SET bid_price = #{bidPrice},
