@@ -15,6 +15,7 @@ public class AdminCreateDTO {
 
     @NotBlank
     @Email
+    @Pattern(regexp = "(?i)^[^@\\s]+@admin\\.com$", message = "Email must end with @admin.com")
     private String email;
 
     @NotBlank
