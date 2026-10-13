@@ -51,3 +51,26 @@ psql -h localhost -U your_username -d postgres -c "CREATE DATABASE capstone2026;
 psql -h localhost -U your_username -d capstone2026 -f CreateTable.sql
 psql -h localhost -U your_username -d capstone2026 -f DummyData.sql
 ```
+## Running Spring Boot for Development & Testing
+
+This is the workflow to run the Spring Boot application with connection to the PostgreSQL database and Kafka
+
+1. Open terminal #1 and tunnel to the PostgreSQL database:
+```powershell
+ssh -L 15432:localhost:5432 ec2-user@<yatin's-ip>
+```
+2. Open terminal #2 and tunnel to the Spring Boot application
+```powershell
+ssh -L 18081:localhost:8081 ec2-user@<yatin's-ip>
+```
+3. Within terminal #2, cd into the backend repo
+
+```bash
+cd Group-12-Backend/
+```
+4. Run the bash script
+```bash
+./run-dev.sh
+```
+
+If you want to test the endpoints using Bruno/Postman, make sure that you use the port 18081 so it knows where the Spring Boot app is.
