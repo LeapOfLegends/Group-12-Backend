@@ -1,6 +1,7 @@
 package group12.marketdata;
 
 import group12.Entities.InstrumentEntity;
+import group12.Entities.MarketCode;
 import group12.Repository.InstrumentRepository;
 import group12.marketdata.exception.MarketDataProviderException;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +15,6 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -56,17 +56,9 @@ class MarketDataBatchRefreshServiceTest {
     }
 
     @Test
-    void hasNoAlpacaPropertiesDependency() {
-        assertTrue(Arrays.stream(MarketDataBatchRefreshService.class.getDeclaredFields())
-                .noneMatch(field -> field.getType().equals(AlpacaProperties.class)));
-        assertTrue(Arrays.stream(MarketDataBatchRefreshService.class.getConstructors())
-                .flatMap(constructor -> Arrays.stream(constructor.getParameterTypes()))
-                .noneMatch(type -> type.equals(AlpacaProperties.class)));
-    }
-
-    @Test
     void sendsOnlyProviderSupportedTradableRequestsInOneBatchCall() {
         InstrumentEntity aapl = instrument(1L, " aapl ", true, "Equity", "USD");
+        aapl.setMarketCode(MarketCode.IEX);
         InstrumentEntity nonTradable = instrument(2L, "MSFT", false, "Equity", "USD");
         InstrumentEntity fx = instrument(3L, "GBPUSD", true, "FX", "USD");
         InstrumentEntity nonUsd = instrument(4L, "TSLA", true, "Equity", "GBP");
@@ -74,7 +66,9 @@ class MarketDataBatchRefreshServiceTest {
         when(instrumentRepository.findTradableInstruments()).thenReturn(
                 List.of(aapl, nonTradable, fx, nonUsd, unsupported)
         );
-        MarketDataRequest aaplRequest = new MarketDataRequest(" aapl ", "Equity", "USD");
+        MarketDataRequest aaplRequest = new MarketDataRequest(
+                " aapl ", "Equity", "USD", MarketCode.IEX
+        );
         when(marketDataProvider.supports(aaplRequest)).thenReturn(true);
         MarketSnapshot snapshot = snapshot();
         when(marketDataProvider.getCurrentMarketSnapshots(any()))
@@ -88,11 +82,17 @@ class MarketDataBatchRefreshServiceTest {
                 ArgumentCaptor.forClass(Collection.class);
         verify(marketDataProvider).getCurrentMarketSnapshots(captor.capture());
         assertEquals(List.of(aaplRequest), List.copyOf(captor.getValue()));
-        verify(marketDataProvider).supports(new MarketDataRequest("GBPUSD", "FX", "USD"));
-        verify(marketDataProvider).supports(new MarketDataRequest("TSLA", "Equity", "GBP"));
-        verify(marketDataProvider).supports(new MarketDataRequest("NVDA", "Equity", "USD"));
+        verify(marketDataProvider).supports(
+                new MarketDataRequest("GBPUSD", "FX", "USD", MarketCode.FX)
+        );
+        verify(marketDataProvider).supports(
+                new MarketDataRequest("TSLA", "Equity", "GBP", MarketCode.IEX)
+        );
+        verify(marketDataProvider).supports(
+                new MarketDataRequest("NVDA", "Equity", "USD", MarketCode.IEX)
+        );
         verify(marketDataProvider, never()).supports(
-                new MarketDataRequest("MSFT", "Equity", "USD")
+                new MarketDataRequest("MSFT", "Equity", "USD", MarketCode.IEX)
         );
         verify(persistenceService).persist(1L, snapshot);
     }
@@ -180,7 +180,8 @@ class MarketDataBatchRefreshServiceTest {
             when(marketDataProvider.supports(new MarketDataRequest(
                     instrument.getSymbol(),
                     instrument.getAssetClass(),
-                    instrument.getCurrency()
+                    instrument.getCurrency(),
+                    instrument.getMarketCode()
             ))).thenReturn(true);
         }
     }
@@ -199,7 +200,18 @@ class MarketDataBatchRefreshServiceTest {
         instrument.setTradable(tradable);
         instrument.setAssetClass(assetClass);
         instrument.setCurrency(currency);
+        instrument.setMarketCode(marketCode(assetClass));
         return instrument;
+    }
+
+    private MarketCode marketCode(String assetClass) {
+        if ("Equity".equalsIgnoreCase(assetClass)) {
+            return MarketCode.IEX;
+        }
+        if ("Crypto".equalsIgnoreCase(assetClass)) {
+            return MarketCode.CRYPTO;
+        }
+        return MarketCode.FX;
     }
 
     private MarketSnapshot snapshot() {

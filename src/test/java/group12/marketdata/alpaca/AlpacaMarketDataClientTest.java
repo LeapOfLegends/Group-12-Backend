@@ -1,5 +1,7 @@
-package group12.marketdata;
+package group12.marketdata.alpaca;
 
+import group12.Entities.MarketCode;
+import group12.marketdata.MarketDataRequest;
 import group12.marketdata.exception.MarketDataConfigurationException;
 import group12.marketdata.exception.MarketDataProviderException;
 import group12.marketdata.exception.MarketDataRateLimitException;
@@ -29,6 +31,8 @@ class AlpacaMarketDataClientTest {
 
     private static final String URL =
             "https://data.alpaca.markets/v2/stocks/snapshots?symbols=AAPL&feed=iex";
+    private static final String BTC_URL =
+            "https://data.alpaca.markets/v1beta3/crypto/us/snapshots?symbols=BTC/USD";
 
     private AlpacaProperties properties;
     private MockRestServiceServer server;
@@ -41,6 +45,7 @@ class AlpacaMarketDataClientTest {
         properties.setSecretKey("test-secret-key");
         properties.setFeed("iex");
         properties.setSupportedUsEquitySymbols(Set.of("AAPL"));
+        properties.setSupportedCryptoSymbols(Set.of(" btc/usd ", "ETH/USD", "SOL/USD"));
 
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl("https://data.alpaca.markets");
@@ -99,7 +104,9 @@ class AlpacaMarketDataClientTest {
     @Test
     void nonEquityOrNonUsdInstrumentIsRejectedEvenIfItsSymbolIsConfigured() {
         properties.setSupportedUsEquitySymbols(Set.of("AAPL", "GBPUSD"));
-        MarketDataRequest instrument = new MarketDataRequest("GBPUSD", "FX", "GBP");
+        MarketDataRequest instrument = new MarketDataRequest(
+                "GBPUSD", "FX", "GBP", MarketCode.FX
+        );
 
         assertThrows(
                 MarketDataProviderException.class,
@@ -112,13 +119,65 @@ class AlpacaMarketDataClientTest {
     void supportIsDeterminedFromProviderNeutralAttributesAndAlpacaAllowlist() {
         assertTrue(client.supports(instrument(" aapl ")));
         assertFalse(client.supports(instrument("MSFT")));
-        assertFalse(client.supports(new MarketDataRequest("AAPL", "Crypto", "USD")));
-        assertFalse(client.supports(new MarketDataRequest("AAPL", "Equity", "GBP")));
+        assertTrue(client.supports(cryptoInstrument(" btc/usd ")));
+        assertFalse(client.supports(cryptoInstrument("DOGE/USD")));
+        assertFalse(client.supports(new MarketDataRequest(
+                "BTC/USD", "Crypto", "EUR", MarketCode.CRYPTO
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "AAPL", "Crypto", "USD", MarketCode.CRYPTO
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "AAPL", "Equity", "GBP", MarketCode.IEX
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "AAPL", "Equity", "USD", MarketCode.LSE
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "BTC/USD", "Crypto", "USD", MarketCode.IEX
+        )));
+        assertFalse(client.supports(new MarketDataRequest(
+                "AAPL", "Equity", "USD", null
+        )));
         assertFalse(client.supports(null));
     }
 
     @Test
-    void providerEnforcesItsFiftySymbolBatchLimitWithoutHttpRequest() {
+    void cryptoOnlyRequestDoesNotRequireIexFeed() {
+        properties.setFeed("unsupported-equity-feed");
+        server.expect(requestTo(BTC_URL))
+                .andRespond(withSuccess("{\"snapshots\":{}}", MediaType.APPLICATION_JSON));
+
+        assertTrue(client.getCurrentMarketSnapshots(
+                List.of(cryptoInstrument("BTC/USD"))
+        ).isEmpty());
+        server.verify();
+    }
+
+    @Test
+    void equityRequestRejectsUnsupportedFeedWithoutHttpRequest() {
+        properties.setFeed("unsupported-equity-feed");
+
+        assertThrows(MarketDataConfigurationException.class, this::requestAapl);
+        server.verify();
+    }
+
+    @Test
+    void mixedRequestRejectsUnsupportedEquityFeedWithoutHttpRequest() {
+        properties.setFeed("unsupported-equity-feed");
+
+        assertThrows(
+                MarketDataConfigurationException.class,
+                () -> client.getCurrentMarketSnapshots(List.of(
+                        instrument("AAPL"),
+                        cryptoInstrument("BTC/USD")
+                ))
+        );
+        server.verify();
+    }
+
+    @Test
+    void batchRequestWithMoreThanFiftySymbolsReachesProvider() {
         Set<String> symbols = IntStream.rangeClosed(1, 51)
                 .mapToObj(number -> "SYM" + number)
                 .collect(java.util.stream.Collectors.toSet());
@@ -126,11 +185,16 @@ class AlpacaMarketDataClientTest {
         List<MarketDataRequest> requests = symbols.stream()
                 .map(this::instrument)
                 .toList();
+        String symbolsParameter = symbols.stream()
+                .sorted()
+                .collect(java.util.stream.Collectors.joining(","));
+        String url = "https://data.alpaca.markets/v2/stocks/snapshots?symbols="
+                + symbolsParameter
+                + "&feed=iex";
+        server.expect(requestTo(url))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
 
-        assertThrows(
-                MarketDataConfigurationException.class,
-                () -> client.getCurrentMarketSnapshots(requests)
-        );
+        assertTrue(client.getCurrentMarketSnapshots(requests).isEmpty());
         server.verify();
     }
 
@@ -148,6 +212,10 @@ class AlpacaMarketDataClientTest {
     }
 
     private MarketDataRequest instrument(String symbol) {
-        return new MarketDataRequest(symbol, "Equity", "USD");
+        return new MarketDataRequest(symbol, "Equity", "USD", MarketCode.IEX);
+    }
+
+    private MarketDataRequest cryptoInstrument(String symbol) {
+        return new MarketDataRequest(symbol, "Crypto", "USD", MarketCode.CRYPTO);
     }
 }

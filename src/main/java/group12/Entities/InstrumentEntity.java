@@ -16,6 +16,7 @@ public class InstrumentEntity {
 
         private Long instrumentId;
         private Long marketId;
+        private MarketCode marketCode;
         private String symbol;
         private String instrumentName;
         private String assetClass;

@@ -96,6 +96,13 @@ alpaca:
         - TXN
         - RTX
         - TMO
+    supported-crypto-symbols:
+        - BTC/USD
+        - ETH/USD
+        - SOL/USD
+        - XRP/USD
+        - DOGE/USD
+        - ADA/USD
 
 market-data:
     refresh:

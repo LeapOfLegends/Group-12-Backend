@@ -66,13 +66,19 @@ class MarketDataLiveRefreshTest {
         jdbcTemplate.execute(
                 "TRUNCATE TABLE holdings, orders, clients, instruments RESTART IDENTITY CASCADE"
         );
+        Long marketId = jdbcTemplate.queryForObject("""
+                INSERT INTO markets (market_code, market_status)
+                VALUES ('IEX', 'OPEN')
+                ON CONFLICT (market_code) DO UPDATE SET market_status = EXCLUDED.market_status
+                RETURNING market_id
+                """, Long.class);
         instrumentId = jdbcTemplate.queryForObject("""
                 INSERT INTO instruments (
-                    symbol, instrument_name, asset_class, currency, is_tradable
+                    market_id, symbol, instrument_name, asset_class, currency, is_tradable
                 )
-                VALUES ('AAPL', 'Apple Inc.', 'Equity', 'USD', TRUE)
+                VALUES (?, 'AAPL', 'Apple Inc.', 'Equity', 'USD', TRUE)
                 RETURNING instrument_id
-                """, Long.class);
+                """, Long.class, marketId);
     }
 
     @Test
