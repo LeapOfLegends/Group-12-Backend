@@ -12,7 +12,7 @@ class OrderTransactionBoundaryTest {
     @Test
     void submissionAndAcceptanceRequireIndependentTransactions() throws Exception {
         Transactional submissionTransaction = OrderSubmissionService.class
-                .getMethod("submit", group12.dto.CreateOrderRequest.class)
+                .getMethod("submit", Long.class, group12.dto.CreateOrderRequest.class)
                 .getAnnotation(Transactional.class);
         Transactional acceptanceTransaction = OrderAcceptanceService.class
                 .getMethod("acceptSubmittedOrder", Long.class)
@@ -29,7 +29,7 @@ class OrderTransactionBoundaryTest {
     @Test
     void coordinatorDoesNotWrapSubmissionAndAcceptanceInOneTransaction() throws Exception {
         Transactional coordinatorTransaction = OrderService.class
-                .getMethod("submitOrder", group12.dto.CreateOrderRequest.class)
+                .getMethod("submitOrder", Long.class, group12.dto.CreateOrderRequest.class)
                 .getAnnotation(Transactional.class);
 
         assertNull(coordinatorTransaction);

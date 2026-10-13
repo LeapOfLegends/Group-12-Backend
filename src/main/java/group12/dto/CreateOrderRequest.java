@@ -7,10 +7,6 @@ import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
 public record CreateOrderRequest(
-
-        // will remove once authentication is implemented
-        @NotNull(message = "Client ID is required") Long clientId,
-
         @NotNull(message = "Instrument ID is required") Long instrumentId,
         @NotNull(message = "Order type is required") OrderType orderType,
         @NotNull(message = "Quantity is required")
