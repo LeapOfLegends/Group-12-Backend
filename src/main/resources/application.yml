@@ -104,6 +104,11 @@ alpaca:
         - DOGE/USD
         - ADA/USD
 
+biquote:
+    data-url: ${BIQUOTE_MARKET_DATA_URL:https://biquote.io}
+    connect-timeout: ${BIQUOTE_CONNECT_TIMEOUT:2s}
+    read-timeout: ${BIQUOTE_READ_TIMEOUT:5s}
+
 market-data:
     refresh:
         enabled: ${MARKET_DATA_REFRESH_ENABLED:true}
