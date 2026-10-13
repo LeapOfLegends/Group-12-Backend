@@ -39,6 +39,7 @@ alpaca:
     api-key: ${ALPACA_API_KEY:}
     secret-key: ${ALPACA_SECRET_KEY:}
     data-url: ${ALPACA_MARKET_DATA_URL:https://data.alpaca.markets}
+    trading-url: ${ALPACA_TRADING_URL:https://api.alpaca.markets}
     feed: ${ALPACA_MARKET_DATA_FEED:iex}
     connect-timeout: ${ALPACA_CONNECT_TIMEOUT:2s}
     read-timeout: ${ALPACA_READ_TIMEOUT:5s}
@@ -105,6 +106,11 @@ market-data:
     refresh:
         enabled: ${MARKET_DATA_REFRESH_ENABLED:true}
         interval: ${MARKET_DATA_REFRESH_INTERVAL:5s}
+
+market-status:
+    refresh:
+        enabled: ${MARKET_STATUS_REFRESH_ENABLED:true}
+        interval: ${MARKET_STATUS_REFRESH_INTERVAL:30m}
 
 order-lifecycle:
     quote:

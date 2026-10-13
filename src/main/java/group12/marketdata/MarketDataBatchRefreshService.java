@@ -1,7 +1,10 @@
 package group12.marketdata;
 
+import group12.Entities.MarketCode;
+import group12.Entities.MarketStatus;
 import group12.Entities.InstrumentEntity;
 import group12.Repository.InstrumentRepository;
+import group12.Services.MarketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -23,23 +26,30 @@ public class MarketDataBatchRefreshService {
     private final InstrumentRepository instrumentRepository;
     private final MarketDataProvider marketDataProvider;
     private final MarketSnapshotPersistenceService persistenceService;
+    private final MarketService marketService;
 
     public MarketDataBatchRefreshService(
             InstrumentRepository instrumentRepository,
             MarketDataProvider marketDataProvider,
-            MarketSnapshotPersistenceService persistenceService
+            MarketSnapshotPersistenceService persistenceService,
+            MarketService marketService
     ) {
         this.instrumentRepository = instrumentRepository;
         this.marketDataProvider = marketDataProvider;
         this.persistenceService = persistenceService;
+        this.marketService = marketService;
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public int refreshEligibleInstruments() {
+        boolean iexOpen = isIexOpen();
         Map<String, List<InstrumentEntity>> instrumentsBySymbol = new TreeMap<>();
         Map<String, MarketDataRequest> requestsBySymbol = new TreeMap<>();
         for (InstrumentEntity instrument : instrumentRepository.findTradableInstruments()) {
             if (instrument == null || !instrument.isTradable()) {
+                continue;
+            }
+            if (instrument.getMarketCode() == MarketCode.IEX && !iexOpen) {
                 continue;
             }
 
@@ -100,5 +110,10 @@ public class MarketDataBatchRefreshService {
 
     private String normalizeSymbol(String symbol) {
         return symbol == null ? "" : symbol.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private boolean isIexOpen() {
+        MarketStatus status = marketService.getMarketStatusByMarketCode(MarketCode.IEX);
+        return status == null || status == MarketStatus.OPEN;
     }
 }

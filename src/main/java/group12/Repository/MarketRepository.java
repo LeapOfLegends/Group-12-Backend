@@ -5,6 +5,8 @@ import group12.Entities.MarketEntity;
 import group12.Entities.MarketStatus;
 import org.apache.ibatis.annotations.*;
 
+import java.time.OffsetDateTime;
+
 @Mapper
 public interface MarketRepository {
 
@@ -21,7 +23,7 @@ public interface MarketRepository {
             market_id,
             market_code,
             market_status,
-            statusAsOf
+            status_as_of
         FROM markets 
         WHERE market_code = #{marketCode} 
         """)
@@ -31,8 +33,13 @@ public interface MarketRepository {
     @Update("""
         UPDATE markets
         SET market_status = #{marketStatus},
+            status_as_of = #{statusAsOf}
         WHERE market_code = #{marketCode}
         """)
-    int updateMarketStatusSnapshot(@Param("marketStatus") MarketStatus marketStatus, @Param("marketCode") MarketCode marketCode);
+    int updateMarketStatusSnapshot(
+            @Param("marketStatus") MarketStatus marketStatus,
+            @Param("marketCode") MarketCode marketCode,
+            @Param("statusAsOf") OffsetDateTime statusAsOf
+    );
     
 }

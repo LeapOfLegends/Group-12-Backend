@@ -11,6 +11,8 @@ import group12.exception.MarketCannotUpdateException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.OffsetDateTime;
+
 @Slf4j 
 @Service
 @RequiredArgsConstructor
@@ -28,14 +30,34 @@ public class MarketService {
     }
 
     public int updateMarketStatusSnapshot(MarketStatus marketStatus, MarketCode marketCode) {
-        MarketEntity market = marketRepository.getMarketEntityForUpdate(marketCode);
+        return updateMarketStatusSnapshot(
+                marketStatus,
+                marketCode,
+                OffsetDateTime.now()
+        );
+    }
 
-        int updatedRows = marketRepository.updateMarketStatusSnapshot(marketStatus, marketCode);
+    public int updateMarketStatusSnapshot(
+            MarketStatus marketStatus,
+            MarketCode marketCode,
+            OffsetDateTime statusAsOf
+    ) {
+        MarketEntity market = marketRepository.getMarketEntityForUpdate(marketCode);
+        if (market == null) {
+            throw new MarketCannotUpdateException("Market cannot be updated");
+        }
+
+        int updatedRows = marketRepository.updateMarketStatusSnapshot(
+                marketStatus,
+                marketCode,
+                statusAsOf
+        );
         if (updatedRows == 0) {
             throw new MarketCannotUpdateException("Market cannot be updated");
         }
 
         market.setMarketStatus(marketStatus);
+        market.setStatusAsOf(statusAsOf);
         log.info("Market updated: marketStatus={}, marketCode={}", marketStatus, marketCode);
         return updatedRows;
 
