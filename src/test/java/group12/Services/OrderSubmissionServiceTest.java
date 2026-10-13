@@ -40,7 +40,7 @@ class OrderSubmissionServiceTest {
     @Test
     void submit_buildsInsertsAndReloadsSubmittedOrder() {
         CreateOrderRequest request = new CreateOrderRequest(
-                10L, 20L, OrderType.BUY, new BigDecimal("7.12500000")
+                20L, OrderType.BUY, new BigDecimal("7.12500000")
         );
         OrderEntity persisted = new OrderEntity();
         persisted.setOrderId(42L);
@@ -53,7 +53,7 @@ class OrderSubmissionServiceTest {
         }).when(orderRepository).insert(any(OrderEntity.class));
         when(orderRepository.findById(42L)).thenReturn(Optional.of(persisted));
 
-        OrderEntity result = service.submit(request);
+        OrderEntity result = service.submit(10L, request);
 
         ArgumentCaptor<OrderEntity> captor = ArgumentCaptor.forClass(OrderEntity.class);
         verify(orderRepository).insert(captor.capture());
@@ -68,13 +68,13 @@ class OrderSubmissionServiceTest {
     @Test
     void submit_whenInsertDoesNotAffectExactlyOneRow_throws() {
         CreateOrderRequest request = new CreateOrderRequest(
-                10L, 20L, OrderType.BUY, BigDecimal.ONE
+                20L, OrderType.BUY, BigDecimal.ONE
         );
         when(orderRepository.insert(any(OrderEntity.class))).thenReturn(0);
 
         OrderSubmissionException exception = assertThrows(
                 OrderSubmissionException.class,
-                () -> service.submit(request)
+                () -> service.submit(10L, request)
         );
 
         assertEquals("Expected to insert one order but inserted 0", exception.getMessage());
@@ -83,7 +83,7 @@ class OrderSubmissionServiceTest {
     @Test
     void submit_whenInsertedOrderCannotBeReloaded_throws() {
         CreateOrderRequest request = new CreateOrderRequest(
-                10L, 20L, OrderType.BUY, BigDecimal.ONE
+                20L, OrderType.BUY, BigDecimal.ONE
         );
         doAnswer(invocation -> {
             invocation.<OrderEntity>getArgument(0).setOrderId(42L);
@@ -91,6 +91,6 @@ class OrderSubmissionServiceTest {
         }).when(orderRepository).insert(any(OrderEntity.class));
         when(orderRepository.findById(42L)).thenReturn(Optional.empty());
 
-        assertThrows(OrderSubmissionException.class, () -> service.submit(request));
+        assertThrows(OrderSubmissionException.class, () -> service.submit(10L, request));
     }
 }

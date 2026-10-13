@@ -31,12 +31,17 @@ public class OrderService {
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
     }
 
+    public OrderEntity getOrderByIdAndClientId(Long orderId, Long clientId) {
+        return orderRepository.findByIdAndClientId(orderId, clientId)
+                .orElseThrow(() -> new OrderNotFoundException("Order not found"));
+    }
+
     public List<OrderEntity> getOrdersByClientId(Long clientId) {
         return orderRepository.findByClientId(clientId);
     }
 
-    public OrderEntity submitOrder(CreateOrderRequest request) {
-        OrderEntity submittedOrder = orderSubmissionService.submit(request);
+    public OrderEntity submitOrder(Long clientId, CreateOrderRequest request) {
+        OrderEntity submittedOrder = orderSubmissionService.submit(clientId, request);
         OrderEntity acceptedOrder = orderAcceptanceService.acceptSubmittedOrder(
                 submittedOrder.getOrderId()
         );
