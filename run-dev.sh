@@ -15,7 +15,7 @@ else
 fi
 
 echo "Starting Kafka..."
-docker compose -f docker-compose-kafka.yml up -d
+docker-compose -f docker-compose-kafka.yml up -d
 
 echo "Building application..."
 mvn clean package
