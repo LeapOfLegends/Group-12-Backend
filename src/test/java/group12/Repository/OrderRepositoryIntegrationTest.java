@@ -202,6 +202,21 @@ class OrderRepositoryIntegrationTest {
         assertTrue(orders.isEmpty());
     }
 
+    @Test
+    void findByIdAndClientId_onlyReturnsOrderToItsOwningClient() {
+        Long orderId = insertOrder(firstClientId, "2026-01-03T10:00:00Z");
+
+        Optional<OrderEntity> ownerResult =
+                orderRepository.findByIdAndClientId(orderId, firstClientId);
+        Optional<OrderEntity> otherClientResult =
+                orderRepository.findByIdAndClientId(orderId, secondClientId);
+
+        assertTrue(ownerResult.isPresent());
+        assertEquals(orderId, ownerResult.orElseThrow().getOrderId());
+        assertEquals(firstClientId, ownerResult.orElseThrow().getClientId());
+        assertTrue(otherClientResult.isEmpty());
+    }
+
     @ParameterizedTest(name = "quantity {0} violates the database constraint")
     @ValueSource(ints = {0, -1})
     void insert_withNonPositiveQuantity_isRejectedByPostgreSql(int quantity) {

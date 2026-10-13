@@ -16,9 +16,9 @@ public class OrderSubmissionService {
     private final OrderRepository orderRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public OrderEntity submit(CreateOrderRequest request) {
+    public OrderEntity submit(Long clientId, CreateOrderRequest request) {
         OrderEntity order = new OrderEntity();
-        order.setClientId(request.clientId());
+        order.setClientId(clientId);
         order.setInstrumentId(request.instrumentId());
         order.setOrderType(request.orderType());
         order.setQuantity(request.quantity());

@@ -9,6 +9,7 @@ import group12.dto.AdminUpdateDTO;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class AdminController {
 
     // CREATE ADMIN
     @PostMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     public AdminDTO createAdmin(
             @Valid @RequestBody AdminCreateDTO request
@@ -38,6 +40,7 @@ public class AdminController {
 
     // GET ALL ADMINS
     @GetMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public List<AdminDTO> getAllAdmins() {
 
         return adminService.getAllAdmins();
@@ -46,6 +49,7 @@ public class AdminController {
 
     // GET ONE ADMIN
     @GetMapping("/{adminId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public AdminDTO getAdminById(
             @PathVariable Long adminId
     ) {
@@ -56,6 +60,7 @@ public class AdminController {
 
     // UPDATE ADMIN
     @PutMapping("/{adminId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public AdminDTO updateAdmin(
             @PathVariable Long adminId,
             @Valid @RequestBody AdminUpdateDTO request
@@ -70,6 +75,7 @@ public class AdminController {
 
     // DELETE ADMIN
     @DeleteMapping("/{adminId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAdmin(
             @PathVariable Long adminId

@@ -16,6 +16,9 @@ spring:
             properties:
                 spring.json.trusted.packages: "*"
 
+jwt:
+    secret: ${JWT_SECRET}
+
 mybatis:
     type-aliases-package: group12.Entities
     configuration:
