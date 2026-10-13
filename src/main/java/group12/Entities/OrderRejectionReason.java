@@ -3,6 +3,7 @@ package group12.Entities;
 public enum OrderRejectionReason {
     INSTRUMENT_NOT_FOUND,
     INSTRUMENT_NOT_TRADABLE,
+    MARKET_CLOSED,
     MISSING_QUOTE,
     STALE_QUOTE,
     INSUFFICIENT_FUNDS,
