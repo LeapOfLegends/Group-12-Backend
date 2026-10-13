@@ -83,7 +83,7 @@ class OrderLifecycleIntegrationTest {
 
         Long orderId = outerTransaction.execute(status -> {
             OrderEntity submitted = submissionService.submit(
-                    request(clientId, instrumentId, OrderType.BUY, "1")
+                    clientId, request(clientId, instrumentId, OrderType.BUY, "1")
             );
             status.setRollbackOnly();
             return submitted.getOrderId();
@@ -367,7 +367,7 @@ class OrderLifecycleIntegrationTest {
             String quantity
     ) {
         return new CreateOrderRequest(
-                clientId, instrumentId, type, new BigDecimal(quantity)
+                instrumentId, type, new BigDecimal(quantity)
         );
     }
 

@@ -23,6 +23,7 @@ public interface AdminRepository {
             last_name AS lastName,
             email,
             password_hash AS passwordHash,
+            roles AS role,
             created_at AS createdAt
         FROM admins
         ORDER BY admin_id
@@ -37,6 +38,7 @@ public interface AdminRepository {
             last_name AS lastName,
             email,
             password_hash AS passwordHash,
+            roles AS role,
             created_at AS createdAt
         FROM admins
         WHERE admin_id = #{adminId}
@@ -51,6 +53,7 @@ public interface AdminRepository {
             last_name AS lastName,
             email,
             password_hash AS passwordHash,
+            roles AS role,
             created_at AS createdAt
         FROM admins
         WHERE email = #{email}
@@ -63,13 +66,15 @@ public interface AdminRepository {
             first_name,
             last_name,
             email,
-            password_hash
+            password_hash,
+            roles
         )
         VALUES (
             #{firstName},
             #{lastName},
             #{email},
-            #{passwordHash}
+            #{passwordHash},
+            #{role}
         )
         """)
     @Options(
@@ -85,7 +90,8 @@ public interface AdminRepository {
         SET
             first_name = #{firstName},
             last_name = #{lastName},
-            email = #{email}
+            email = #{email},
+            roles = #{role}
         WHERE admin_id = #{adminId}
         """)
     int update(AdminEntity admin);

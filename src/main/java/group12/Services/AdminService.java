@@ -8,23 +8,21 @@ import group12.dto.AdminDTO;
 import group12.dto.AdminUpdateDTO;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
-import java.util.Base64;
 import java.util.List;
 
 @Service
 public class AdminService {
 
     private final AdminRepository adminRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public AdminService(AdminRepository adminRepository) {
+    public AdminService(AdminRepository adminRepository, PasswordEncoder passwordEncoder) {
         this.adminRepository = adminRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
 
@@ -46,9 +44,10 @@ public class AdminService {
         admin.setFirstName(request.getFirstName());
         admin.setLastName(request.getLastName());
         admin.setEmail(request.getEmail());
+        admin.setRole(request.getRole());
 
         admin.setPasswordHash(
-                hashPassword(request.getPassword())
+                passwordEncoder.encode(request.getPassword())
         );
 
 
@@ -128,6 +127,7 @@ public class AdminService {
         admin.setFirstName(request.getFirstName());
         admin.setLastName(request.getLastName());
         admin.setEmail(request.getEmail());
+        admin.setRole(request.getRole());
 
 
         adminRepository.update(admin);
@@ -153,27 +153,6 @@ public class AdminService {
     }
 
 
-        private String hashPassword(String password) {
-                byte[] salt = new byte[16];
-                new SecureRandom().nextBytes(salt);
-
-                try {
-                        PBEKeySpec keySpec = new PBEKeySpec(
-                                        password.toCharArray(), salt, 65536, 256
-                        );
-                        byte[] hash = SecretKeyFactory
-                                        .getInstance("PBKDF2WithHmacSHA256")
-                                        .generateSecret(keySpec)
-                                        .getEncoded();
-
-                        return Base64.getEncoder().encodeToString(salt) + ":"
-                                        + Base64.getEncoder().encodeToString(hash);
-                } catch (GeneralSecurityException exception) {
-                        throw new IllegalStateException("Unable to hash password", exception);
-                }
-        }
-
-
         // CONVERT ENTITY -> DTO
     private AdminDTO toDTO(AdminEntity admin) {
 
@@ -182,6 +161,7 @@ public class AdminService {
                 admin.getFirstName(),
                 admin.getLastName(),
                 admin.getEmail(),
+                admin.getRole(),
                 admin.getCreatedAt()
         );
     }

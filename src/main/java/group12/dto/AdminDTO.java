@@ -8,6 +8,7 @@ public class AdminDTO {
     private String firstName;
     private String lastName;
     private String email;
+    private String role;
     private LocalDateTime createdAt;
 
 
@@ -16,12 +17,14 @@ public class AdminDTO {
             String firstName,
             String lastName,
             String email,
+            String role,
             LocalDateTime createdAt) {
 
         this.adminId = adminId;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
+        this.role = role;
         this.createdAt = createdAt;
     }
 
@@ -40,6 +43,10 @@ public class AdminDTO {
 
     public String getEmail() {
         return email;
+    }
+
+    public String getRole() {
+        return role;
     }
 
     public LocalDateTime getCreatedAt() {
