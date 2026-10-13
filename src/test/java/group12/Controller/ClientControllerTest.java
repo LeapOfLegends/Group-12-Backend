@@ -1,7 +1,6 @@
 package group12.Controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -15,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 
 import group12.Entities.ClientEntity;
 import group12.Services.ClientService;
-import group12.dto.ClientDTO;
 import group12.dto.ClientUpdateDTO;
 import group12.dto.AccountBalanceDTO;
 import group12.dto.BalanceTransactionType;
@@ -30,37 +28,6 @@ class ClientControllerTest {
     void setUp() {
         clientService = mock(ClientService.class);
         clientController = new ClientController(clientService);
-    }
-
-    @Test
-    void createClient_shouldReturn201_whenPayloadIsValid() {
-        ClientDTO request = new ClientDTO();
-        request.setFirstName("Ava");
-        request.setLastName("Martinez");
-        request.setEmail("ava.martinez@example.com");
-        request.setPasswordHash("hash");
-        request.setSsn("123-45-6789");
-        request.setPhoneNumber("555-123-4567");
-        request.setAccountBalance(new BigDecimal("250.00"));
-
-        ClientEntity entity = new ClientEntity();
-        entity.setClientId(1L);
-        entity.setFirstName("Ava");
-        entity.setLastName("Martinez");
-        entity.setEmail("ava.martinez@example.com");
-        entity.setPasswordHash("hash");
-        entity.setSsn("123-45-6789");
-        entity.setPhoneNumber("555-123-4567");
-        entity.setAccountBalance(new BigDecimal("250.00"));
-
-        when(clientService.toEntity(any(ClientDTO.class))).thenReturn(entity);
-        when(clientService.createClient(any(ClientEntity.class))).thenReturn(true);
-
-        ResponseEntity<ClientEntity> response = clientController.createClient(request);
-
-        assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("Ava", response.getBody().getFirstName());
     }
 
     @Test

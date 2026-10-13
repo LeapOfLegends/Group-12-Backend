@@ -2,9 +2,7 @@ package group12.marketdata;
 
 import group12.Entities.InstrumentEntity;
 import group12.Entities.MarketCode;
-import group12.Entities.MarketStatus;
 import group12.Repository.InstrumentRepository;
-import group12.Services.MarketService;
 import group12.marketdata.exception.MarketDataProviderException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -46,21 +45,61 @@ class MarketDataBatchRefreshServiceTest {
     @Mock
     private MarketSnapshotPersistenceService persistenceService;
 
-        @Mock
-        private MarketService marketService;
-
     private MarketDataBatchRefreshService service;
 
     @BeforeEach
     void setUp() {
         service = new MarketDataBatchRefreshService(
                 instrumentRepository,
-                marketDataProvider,
-                persistenceService,
-                marketService
+                List.of(marketDataProvider),
+                persistenceService
         );
-        when(marketService.getMarketStatusByMarketCode(MarketCode.IEX))
-                .thenReturn(MarketStatus.OPEN);
+    }
+
+    @Test
+    void routesEachProviderOnlyItsSupportedBatchAndPersistsBothSnapshots() {
+        MarketDataProvider alpacaProvider = mock(MarketDataProvider.class);
+        MarketDataProvider biquoteProvider = mock(MarketDataProvider.class);
+        service = new MarketDataBatchRefreshService(
+                instrumentRepository,
+                List.of(alpacaProvider, biquoteProvider),
+                persistenceService
+        );
+        InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
+        InstrumentEntity eurUsd = instrument(2L, "EUR/USD", true, "Forex", "USD");
+        InstrumentEntity unsupported = instrument(3L, "SHEL", true, "Equity", "GBP");
+        unsupported.setMarketCode(MarketCode.LSE);
+        when(instrumentRepository.findTradableInstruments()).thenReturn(
+                List.of(aapl, eurUsd, unsupported)
+        );
+        MarketDataRequest aaplRequest = new MarketDataRequest(
+                "AAPL", "Equity", "USD", MarketCode.IEX
+        );
+        MarketDataRequest eurUsdRequest = new MarketDataRequest(
+                "EUR/USD", "Forex", "USD", MarketCode.FX
+        );
+        when(alpacaProvider.supports(any())).thenAnswer(invocation ->
+                aaplRequest.equals(invocation.getArgument(0))
+        );
+        when(biquoteProvider.supports(any())).thenAnswer(invocation ->
+                eurUsdRequest.equals(invocation.getArgument(0))
+        );
+        MarketSnapshot alpacaSnapshot = snapshot();
+        MarketSnapshot biquoteSnapshot = quoteSnapshot();
+        when(alpacaProvider.getCurrentMarketSnapshots(any()))
+                .thenReturn(Map.of("AAPL", alpacaSnapshot));
+        when(biquoteProvider.getCurrentMarketSnapshots(any()))
+                .thenReturn(Map.of("EUR/USD", biquoteSnapshot));
+        when(persistenceService.persist(1L, alpacaSnapshot)).thenReturn(true);
+        when(persistenceService.persist(2L, biquoteSnapshot)).thenReturn(true);
+
+        assertEquals(2, service.refreshEligibleInstruments());
+
+        assertProviderBatch(alpacaProvider, List.of(aaplRequest));
+        assertProviderBatch(biquoteProvider, List.of(eurUsdRequest));
+        verify(persistenceService).persist(1L, alpacaSnapshot);
+        verify(persistenceService).persist(2L, biquoteSnapshot);
+        verify(persistenceService, times(2)).persist(anyLong(), any());
     }
 
     @Test
@@ -183,30 +222,6 @@ class MarketDataBatchRefreshServiceTest {
         assertTrue(output.getOut().contains("IllegalStateException: database failure"));
     }
 
-    @Test
-    void closedIexSkipsEquityButKeepsCryptoPolling() {
-        when(marketService.getMarketStatusByMarketCode(MarketCode.IEX))
-                .thenReturn(MarketStatus.CLOSED);
-        InstrumentEntity aapl = instrument(1L, "AAPL", true, "Equity", "USD");
-        InstrumentEntity btc = instrument(2L, "BTC/USD", true, "Crypto", "USD");
-        when(instrumentRepository.findTradableInstruments()).thenReturn(List.of(aapl, btc));
-        MarketSnapshot snapshot = snapshot();
-        when(marketDataProvider.supports(new MarketDataRequest(
-                "BTC/USD", "Crypto", "USD", MarketCode.CRYPTO
-        ))).thenReturn(true);
-        when(marketDataProvider.getCurrentMarketSnapshots(any()))
-                .thenReturn(Map.of("BTC/USD", snapshot));
-        when(persistenceService.persist(2L, snapshot)).thenReturn(true);
-
-        assertEquals(1, service.refreshEligibleInstruments());
-
-        verify(marketDataProvider, never()).supports(new MarketDataRequest(
-                "AAPL", "Equity", "USD", MarketCode.IEX
-        ));
-        verify(persistenceService, never()).persist(1L, snapshot);
-        verify(persistenceService).persist(2L, snapshot);
-    }
-
     private void support(InstrumentEntity... instruments) {
         for (InstrumentEntity instrument : instruments) {
             when(marketDataProvider.supports(new MarketDataRequest(
@@ -216,6 +231,17 @@ class MarketDataBatchRefreshServiceTest {
                     instrument.getMarketCode()
             ))).thenReturn(true);
         }
+    }
+
+    private void assertProviderBatch(
+            MarketDataProvider provider,
+            List<MarketDataRequest> expectedRequests
+    ) {
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Collection<MarketDataRequest>> captor =
+                ArgumentCaptor.forClass(Collection.class);
+        verify(provider).getCurrentMarketSnapshots(captor.capture());
+        assertEquals(expectedRequests, List.copyOf(captor.getValue()));
     }
 
     private InstrumentEntity instrument(
@@ -253,6 +279,16 @@ class MarketDataBatchRefreshServiceTest {
                 new BigDecimal("10.05"),
                 OffsetDateTime.parse("2026-09-29T15:00:00Z"),
                 OffsetDateTime.parse("2026-09-29T15:00:01Z")
+        );
+    }
+
+    private MarketSnapshot quoteSnapshot() {
+        return new MarketSnapshot(
+                new BigDecimal("1.08542"),
+                new BigDecimal("1.08558"),
+                null,
+                OffsetDateTime.parse("2026-09-29T15:00:00Z"),
+                null
         );
     }
 }

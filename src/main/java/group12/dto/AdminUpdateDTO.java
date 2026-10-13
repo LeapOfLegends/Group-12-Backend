@@ -2,6 +2,7 @@ package group12.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 
 public class AdminUpdateDTO {
 
@@ -14,6 +15,10 @@ public class AdminUpdateDTO {
     @NotBlank
     @Email
     private String email;
+
+    @NotBlank
+    @Pattern(regexp = "super_admin|finance|operations", message = "Role must be super_admin, finance, or operations")
+    private String role;
 
 
     public String getFirstName() {
@@ -40,5 +45,13 @@ public class AdminUpdateDTO {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 }

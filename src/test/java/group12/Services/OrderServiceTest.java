@@ -102,15 +102,15 @@ class OrderServiceTest {
             OrderStatus status
     ) {
         CreateOrderRequest request = new CreateOrderRequest(
-                10L, 20L, OrderType.BUY, BigDecimal.ONE
+                20L, OrderType.BUY, BigDecimal.ONE
         );
         OrderEntity submittedOrder = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
         OrderEntity acceptanceResult = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
         acceptanceResult.setStatus(status);
-        when(orderSubmissionService.submit(request)).thenReturn(submittedOrder);
+        when(orderSubmissionService.submit(10L, request)).thenReturn(submittedOrder);
         when(orderAcceptanceService.acceptSubmittedOrder(42L)).thenReturn(acceptanceResult);
 
-        OrderEntity result = orderService.submitOrder(request);
+        OrderEntity result = orderService.submitOrder(10L, request);
 
         assertSame(acceptanceResult, result);
         verify(orderExecutionService, never()).executeAcceptedOrder(42L);
@@ -164,17 +164,17 @@ class OrderServiceTest {
     @DisplayName("submitOrder propagates acceptance infrastructure failures")
     void submitOrder_whenAcceptanceFails_propagatesFailure() {
         CreateOrderRequest request = new CreateOrderRequest(
-                10L, 20L, OrderType.BUY, BigDecimal.ONE
+                20L, OrderType.BUY, BigDecimal.ONE
         );
         OrderEntity submittedOrder = order(42L, 10L, 20L, OrderType.BUY, BigDecimal.ONE);
         RuntimeException infrastructureFailure = new RuntimeException("database unavailable");
-        when(orderSubmissionService.submit(request)).thenReturn(submittedOrder);
+        when(orderSubmissionService.submit(10L, request)).thenReturn(submittedOrder);
         when(orderAcceptanceService.acceptSubmittedOrder(42L))
                 .thenThrow(infrastructureFailure);
 
         RuntimeException result = assertThrows(
                 RuntimeException.class,
-                () -> orderService.submitOrder(request)
+                () -> orderService.submitOrder(10L, request)
         );
 
         assertSame(infrastructureFailure, result);
@@ -212,6 +212,35 @@ class OrderServiceTest {
         );
         assertEquals("Order not found", exception.getMessage());
         verify(orderRepository).findById(999L);
+    }
+
+    @Test
+    @DisplayName("getOrderByIdAndClientId returns an order owned by the requested client")
+    void getOrderByIdAndClientId_whenOwnedByClient_returnsOrder() {
+        OrderEntity expectedOrder = order(
+                42L, 10L, 20L, OrderType.BUY, new BigDecimal("3")
+        );
+        when(orderRepository.findByIdAndClientId(42L, 10L))
+                .thenReturn(Optional.of(expectedOrder));
+
+        OrderEntity result = orderService.getOrderByIdAndClientId(42L, 10L);
+
+        assertSame(expectedOrder, result);
+        verify(orderRepository).findByIdAndClientId(42L, 10L);
+    }
+
+    @Test
+    @DisplayName("getOrderByIdAndClientId returns not found when order is not owned by client")
+    void getOrderByIdAndClientId_whenNotOwnedByClient_throwsNotFoundException() {
+        when(orderRepository.findByIdAndClientId(42L, 10L)).thenReturn(Optional.empty());
+
+        OrderNotFoundException exception = assertThrows(
+                OrderNotFoundException.class,
+                () -> orderService.getOrderByIdAndClientId(42L, 10L)
+        );
+
+        assertEquals("Order not found", exception.getMessage());
+        verify(orderRepository).findByIdAndClientId(42L, 10L);
     }
 
     @Test

@@ -16,6 +16,9 @@ spring:
             properties:
                 spring.json.trusted.packages: "*"
 
+jwt:
+    secret: ${JWT_SECRET}
+
 mybatis:
     type-aliases-package: group12.Entities
     configuration:
@@ -101,6 +104,11 @@ alpaca:
         - XRP/USD
         - DOGE/USD
         - ADA/USD
+
+biquote:
+    data-url: ${BIQUOTE_MARKET_DATA_URL:https://biquote.io}
+    connect-timeout: ${BIQUOTE_CONNECT_TIMEOUT:2s}
+    read-timeout: ${BIQUOTE_READ_TIMEOUT:5s}
 
 market-data:
     refresh:
