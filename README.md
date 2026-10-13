@@ -63,7 +63,7 @@ ssh -L 15432:localhost:5432 ec2-user@<yatin's-ip>
 ```powershell
 ssh -L 18081:localhost:8081 ec2-user@<yatin's-ip>
 ```
-3. Within terminal #2, cd into the backend repo
+3. Within terminal #2, cd into the backend repo (if you're testing your own code, make sure you fetch and switch to your branch before running the bash script)
 
 ```bash
 cd Group-12-Backend/
