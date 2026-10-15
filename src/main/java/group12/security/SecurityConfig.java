@@ -46,6 +46,7 @@ public class SecurityConfig {
         return http
                 // Requests use bearer tokens rather than cookie-backed sessions, so CSRF is disabled.
                 .csrf(csrf -> csrf.disable())
+            .cors(cors -> {})
                 // Do not create or use an HTTP session; authenticate each request from its JWT.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
