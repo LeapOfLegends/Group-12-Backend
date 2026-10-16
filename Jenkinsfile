@@ -82,8 +82,10 @@ stages{
             }
             steps {
                 sh '''
-                    docker stop capstone-backend || true
-                    docker rm capstone-backend || true
+                    docker rm -f capstone-backend || true
+                    for container_id in $(docker ps -aq --filter publish=8081); do
+                        docker rm -f "$container_id"
+                    done
                     docker run -d --name capstone-backend -p 8081:8081 capstone-backend:1.1.0
                 '''
             }
