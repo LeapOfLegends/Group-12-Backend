@@ -735,33 +735,33 @@ INSERT INTO holdings (holding_id, client_id, instrument_id, quantity, average_co
 INSERT INTO holdings (holding_id, client_id, instrument_id, quantity, average_cost) VALUES (29, 29, (SELECT instrument_id FROM instruments WHERE symbol = 'INTC'), 10, 50.9200);
 
 -- Seed data for transactions table
--- Transactions track deposits/withdrawals and associated order information
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (1, 1, '2016-09-23 10:15:34-06', 20436.40, 22238.40, 'BUY', '2016-09-23 10:15:34-06', 22238.40, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (2, 2, '2016-11-08 09:42:16-06', 17874.95, 24126.60, 'BUY', '2016-11-08 09:42:16-06', 24126.60, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (4, 5, '2017-05-22 11:05:31-06', 30575.17, 3546.75, 'BUY', '2017-05-22 11:05:31-06', 3546.75, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (1, 4, '2017-02-16 14:22:07-06', 27614.55, 7444.00, 'SELL', '2017-02-16 14:22:07-06', 7444.00, 'DEPOSIT');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (2, 7, '2017-11-27 10:48:57-06', 19513.50, 8091.00, 'SELL', '2017-11-27 10:48:57-06', 8091.00, 'DEPOSIT');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (7, 10, '2018-07-12 14:04:18-06', 28743.12, 3576.60, 'BUY', '2018-07-12 14:04:18-06', 3576.60, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (11, 11, '2018-10-03 10:11:29-06', 30126.54, 11845.00, 'BUY', '2018-10-03 10:11:29-06', 11845.00, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (13, 13, '2019-03-11 13:45:21-06', 22456.89, 9704.40, 'BUY', '2019-03-11 13:45:21-06', 9704.40, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (14, 14, '2019-06-20 09:58:12-06', 25301.45, 12246.00, 'BUY', '2019-06-20 09:58:12-06', 12246.00, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (18, 18, '2020-06-24 11:07:55-06', 26156.78, 1574.20, 'BUY', '2020-06-24 11:07:55-06', 1574.20, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (21, 21, '2021-02-18 10:52:12-06', 24632.11, 1713.00, 'BUY', '2021-02-18 10:52:12-06', 1713.00, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (25, 25, '2022-01-25 09:06:59-06', 20478.34, 1377.00, 'BUY', '2022-01-25 09:06:59-06', 1377.00, 'WITHDRAWAL');
-INSERT INTO transactions (client_id, order_id, transaction_history, account_balance, order_amount, order_type, order_history, transaction_amount, transaction_type) 
-VALUES (29, 29, '2022-12-05 12:03:52-06', 23567.89, 509.20, 'BUY', '2022-12-05 12:03:52-06', 509.20, 'WITHDRAWAL');
+-- Signed trade amounts correspond to each filled order's trade value.
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (1, 1, 'BUY', -22238.40, 20436.40, '2016-09-23 10:15:34-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (2, 2, 'BUY', -24126.60, 17874.95, '2016-11-08 09:42:16-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (1, 4, 'SELL', 7444.00, 27614.55, '2017-02-16 14:22:07-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (4, 5, 'BUY', -3546.75, 30575.17, '2017-05-22 11:05:31-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (2, 7, 'SELL', 8091.00, 19513.50, '2017-11-27 10:48:57-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (7, 10, 'BUY', -3576.60, 28743.12, '2018-07-12 14:04:18-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (11, 11, 'BUY', -11845.00, 30126.54, '2018-10-03 10:11:29-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (13, 13, 'BUY', -9704.40, 22456.89, '2019-03-11 13:45:21-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (14, 14, 'BUY', -12246.00, 25301.45, '2019-06-20 09:58:12-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (18, 18, 'BUY', -1574.20, 26156.78, '2020-06-24 11:07:55-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (21, 21, 'BUY', -1713.00, 24632.11, '2021-02-18 10:52:12-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (25, 25, 'BUY', -1377.00, 20478.34, '2022-01-25 09:06:59-06');
+INSERT INTO transactions (client_id, order_id, transaction_type, amount, balance_after, created_at)
+VALUES (29, 29, 'BUY', -509.20, 23567.89, '2022-12-05 12:03:52-06');
 
 -- Seed data for holding_history table
 -- Tracks historical changes to holdings when orders are executed
