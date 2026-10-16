@@ -117,3 +117,13 @@ CREATE TABLE holding_history (
     average_cost NUMERIC(30,16) NOT NULL CHECK (average_cost >= 0),
 	updated_at TIMESTAMP -- will be pulled from holdings tables so will not use current_timestamp
 );
+
+CREATE TABLE refresh_tokens (
+    token_hash   CHAR(64) PRIMARY KEY,
+    account_type VARCHAR(10) NOT NULL
+                 CHECK (account_type IN ('client', 'admin')),
+    account_id   BIGINT NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (account_type, account_id)
+);
