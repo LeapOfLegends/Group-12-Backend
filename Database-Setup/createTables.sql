@@ -98,15 +98,15 @@ CREATE TABLE holdings (
 CREATE TABLE transactions (
 	transaction_id BIGSERIAL PRIMARY KEY,
 	client_id BIGINT NOT NULL REFERENCES clients(client_id),
-	order_id BIGINT REFERENCES orders(order_id),
-	transaction_history TIMESTAMPTZ,
-	account_balance NUMERIC(40,16) NOT NULL DEFAULT 0 CHECK (account_balance >= 0), --(account_balance joined from clients)
-	order_amount NUMERIC(40,16), --(trade_value joined from orders)
-	order_type TEXT CHECK(order_type IN ('SELL', 'BUY')), --(order_type joined from orders)
-	order_history TIMESTAMPTZ, --(filled_at joined from orders)
-	transaction_amount NUMERIC(20, 8),
-	transaction_type TEXT CHECK(transaction_type IN ('WITHDRAWAL', 'DEPOSIT'))
+	order_id BIGINT UNIQUE REFERENCES orders(order_id) CHECK ((transaction_type IN ('BUY', 'SELL') AND order_id IS NOT NULL) OR (transaction_type IN ('DEPOSIT', 'WITHDRAWAL') AND order_id IS NULL)),
+	transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL')),
+	amount NUMERIC(40,16) NOT NULL CHECK ((transaction_type IN ('DEPOSIT', 'SELL') AND amount > 0) OR (transaction_type IN ('WITHDRAWAL', 'BUY') AND amount < 0)),
+	balance_after NUMERIC(40,16) NOT NULL CHECK (balance_after >= 0),
+	created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_transactions_client_created_at
+	ON transactions(client_id, created_at, transaction_id);
 
 CREATE TABLE holding_history (
     holding_id BIGINT NOT NULL REFERENCES holdings(holding_id),
