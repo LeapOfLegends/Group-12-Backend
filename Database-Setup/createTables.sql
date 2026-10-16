@@ -124,6 +124,7 @@ CREATE TABLE refresh_tokens (
                  CHECK (account_type IN ('client', 'admin')),
     account_id   BIGINT NOT NULL,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at   TIMESTAMPTZ NOT NULL,
 
     UNIQUE (account_type, account_id)
 );
