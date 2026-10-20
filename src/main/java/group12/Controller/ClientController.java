@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -18,9 +19,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import group12.Entities.ClientEntity;
 import group12.Services.ClientService;
+import group12.Services.ClientDashboardService;
 import group12.dto.ClientUpdateDTO;
 import group12.dto.MoneyMovementDTO;
 import group12.dto.AccountBalanceDTO;
+import group12.dto.ClientDashboardDTO;
 import jakarta.validation.Valid;
 
 @RestController
@@ -28,9 +31,16 @@ import jakarta.validation.Valid;
 public class ClientController {
 
     private final ClientService clientService;
+    private final ClientDashboardService clientDashboardService;
+
+    @Autowired
+    public ClientController(ClientService clientService, ClientDashboardService clientDashboardService) {
+        this.clientService = clientService;
+        this.clientDashboardService = clientDashboardService;
+    }
 
     public ClientController(ClientService clientService) {
-        this.clientService = clientService;
+        this(clientService, null);
     }
 
     /*
@@ -52,6 +62,14 @@ public class ClientController {
     @PreAuthorize("hasRole('CLIENT')")
     public ResponseEntity<AccountBalanceDTO> getCurrentAccountBalance(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(clientService.getAccountBalance(currentClientId(jwt)));
+    }
+
+    @GetMapping("/me/dashboard")
+    @PreAuthorize("hasRole('CLIENT')")
+    public ResponseEntity<ClientDashboardDTO> getCurrentClientDashboard(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return ResponseEntity.ok(clientDashboardService.getDashboard(currentClientId(jwt)));
     }
 
     @PutMapping("/me")
