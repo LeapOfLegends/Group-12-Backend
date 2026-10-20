@@ -1,5 +1,6 @@
 DROP TABLE IF EXISTS holdings CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS instrument_price_history CASCADE;
 DROP TABLE IF EXISTS instruments CASCADE;
 DROP TABLE IF EXISTS markets CASCADE;
 DROP TABLE IF EXISTS clients CASCADE;
@@ -38,6 +39,15 @@ CREATE TABLE instruments (
         (last_price IS NULL AND last_trade_as_of IS NULL)
         OR (last_price IS NOT NULL AND last_trade_as_of IS NOT NULL)
     )
+);
+
+CREATE TABLE instrument_price_history (
+    instrument_id BIGINT NOT NULL REFERENCES instruments(instrument_id),
+    timeframe VARCHAR(10) NOT NULL
+        CHECK (timeframe IN ('5Min', '30Min', '1Day', '1Week', '1Month')),
+    bar_start TIMESTAMPTZ NOT NULL,
+    close_price NUMERIC(30,16) NOT NULL CHECK (close_price > 0),
+    PRIMARY KEY (instrument_id, timeframe, bar_start)
 );
 
 CREATE TABLE clients (
