@@ -16,6 +16,16 @@ public class AlpacaMarketDataConfiguration {
     @Bean
     @Qualifier("alpacaMarketDataRestClient")
     RestClient alpacaMarketDataRestClient(AlpacaProperties properties) {
+        return alpacaRestClient(properties.getDataUrl().toString(), properties);
+    }
+
+    @Bean
+    @Qualifier("alpacaTradingRestClient")
+    RestClient alpacaTradingRestClient(AlpacaProperties properties) {
+        return alpacaRestClient(properties.getTradingUrl().toString(), properties);
+    }
+
+    private RestClient alpacaRestClient(String baseUrl, AlpacaProperties properties) {
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(properties.getConnectTimeout())
                 .build();
@@ -24,7 +34,7 @@ public class AlpacaMarketDataConfiguration {
         requestFactory.setReadTimeout(properties.getReadTimeout());
 
         return RestClient.builder()
-                .baseUrl(properties.getDataUrl().toString())
+                .baseUrl(baseUrl)
                 .requestFactory(requestFactory)
                 .build();
     }

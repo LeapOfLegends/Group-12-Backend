@@ -36,41 +36,45 @@ public class MarketDataBatchRefreshService {
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public int refreshEligibleInstruments() {
+
         List<InstrumentRequest> eligibleInstruments = new ArrayList<>();
+
         for (InstrumentEntity instrument : instrumentRepository.findTradableInstruments()) {
             if (instrument == null || !instrument.isTradable()) {
                 continue;
             }
+
+            MarketDataRequest request = toMarketDataRequest(instrument);
             eligibleInstruments.add(new InstrumentRequest(
                     instrument,
-                    toMarketDataRequest(instrument)
+                    request
             ));
         }
 
         int persistedInstruments = 0;
         for (MarketDataProvider marketDataProvider : marketDataProviders) {
-            Map<String, List<InstrumentEntity>> instrumentsBySymbol = new TreeMap<>();
-            Map<String, MarketDataRequest> requestsBySymbol = new TreeMap<>();
+            Map<String, List<InstrumentEntity>> providerInstrumentsBySymbol = new TreeMap<>();
+            Map<String, MarketDataRequest> providerRequestsBySymbol = new TreeMap<>();
             for (InstrumentRequest eligibleInstrument : eligibleInstruments) {
                 MarketDataRequest request = eligibleInstrument.request();
                 if (!marketDataProvider.supports(request)) {
                     continue;
                 }
                 String symbol = normalizeSymbol(request.symbol());
-                instrumentsBySymbol
+                providerInstrumentsBySymbol
                         .computeIfAbsent(symbol, ignored -> new ArrayList<>())
                         .add(eligibleInstrument.instrument());
-                requestsBySymbol.putIfAbsent(symbol, request);
+                providerRequestsBySymbol.putIfAbsent(symbol, request);
             }
-            if (requestsBySymbol.isEmpty()) {
+            if (providerRequestsBySymbol.isEmpty()) {
                 continue;
             }
 
             Map<String, MarketSnapshot> snapshots =
-                    marketDataProvider.getCurrentMarketSnapshots(requestsBySymbol.values());
+                    marketDataProvider.getCurrentMarketSnapshots(providerRequestsBySymbol.values());
             for (Map.Entry<String, MarketSnapshot> entry : snapshots.entrySet()) {
                 List<InstrumentEntity> matchingInstruments =
-                        instrumentsBySymbol.get(normalizeSymbol(entry.getKey()));
+                        providerInstrumentsBySymbol.get(normalizeSymbol(entry.getKey()));
                 if (matchingInstruments == null) {
                     continue;
                 }
@@ -108,7 +112,6 @@ public class MarketDataBatchRefreshService {
     private String normalizeSymbol(String symbol) {
         return symbol == null ? "" : symbol.trim().toUpperCase(Locale.ROOT);
     }
-
     private record InstrumentRequest(
             InstrumentEntity instrument,
             MarketDataRequest request

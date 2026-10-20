@@ -57,6 +57,14 @@ public class InstrumentService {
         return toDto(instrument);
     }
 
+    public Long getMarketIdBySymbol(String symbol) {
+
+        String cleanedSymbol = symbol.trim().toUpperCase();
+
+        Long marketId = instrumentRepository.getMarketIdBySymbol(cleanedSymbol);
+
+        return marketId;
+    }
 
     private InstrumentDTO toDto(InstrumentEntity instrument) {
 
