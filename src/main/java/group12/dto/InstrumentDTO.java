@@ -14,6 +14,7 @@ import java.time.OffsetDateTime;
 @AllArgsConstructor
 public class InstrumentDTO {
 
+    private Long instrumentId;
     private String symbol;
     private String instrumentName;
     private String assetClass;
