@@ -1,5 +1,8 @@
 package group12.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.databind.JsonNode;
+import group12.exception.ClientProfileUpdateException;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 
@@ -36,4 +39,12 @@ public class ClientUpdateDTO {
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    @JsonAnySetter
+    public void rejectUnsupportedField(String fieldName, JsonNode value) {
+        if ("ssn".equalsIgnoreCase(fieldName)) {
+            throw new ClientProfileUpdateException("SSN cannot be changed through client profile updates");
+        }
+        throw new ClientProfileUpdateException("Unknown client profile update field: " + fieldName);
+    }
 }
