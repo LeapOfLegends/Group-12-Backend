@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import group12.Repository.TransactionsRepository;
+import group12.Entities.TransactionsEntity;
 
 @ExtendWith(MockitoExtension.class)
 class TransactionsServiceTest {
@@ -26,6 +28,28 @@ class TransactionsServiceTest {
     @BeforeEach
     void setUp() {
         transactionsService = new TransactionsService(transactionsRepository);
+    }
+
+    @Test
+    void getTransactionsByClientId_returnsRepositoryResults() {
+        List<TransactionsEntity> transactions = List.of(new TransactionsEntity());
+        when(transactionsRepository.getTransactionsByClientId(1L)).thenReturn(transactions);
+
+        List<TransactionsEntity> result = transactionsService.getTransactionsByClientId(1L);
+
+        org.junit.jupiter.api.Assertions.assertSame(transactions, result);
+        verify(transactionsRepository).getTransactionsByClientId(1L);
+    }
+
+    @Test
+    void getTransactionById_returnsRepositoryResult() {
+        TransactionsEntity transaction = new TransactionsEntity();
+        when(transactionsRepository.getTransactionById(10L)).thenReturn(transaction);
+
+        TransactionsEntity result = transactionsService.getTransactionById(10L);
+
+        org.junit.jupiter.api.Assertions.assertSame(transaction, result);
+        verify(transactionsRepository).getTransactionById(10L);
     }
 
     @Test

@@ -7,6 +7,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.List;
+
+import group12.Entities.TransactionsEntity;
 
 @Service
 @RequiredArgsConstructor
@@ -14,6 +17,18 @@ import java.math.BigDecimal;
 public class TransactionsService {
 
 	private final TransactionsRepository transactionsRepository;
+
+	public List<TransactionsEntity> getTransactionsByClientId(Long clientId) {
+		return transactionsRepository.getTransactionsByClientId(clientId);
+	}
+
+	public TransactionsEntity getTransactionById(Long transactionId) {
+		return transactionsRepository.getTransactionById(transactionId);
+	}
+
+	public TransactionsEntity getTransactionByIdAndClientId(Long transactionId, Long clientId) {
+		return transactionsRepository.getTransactionByIdAndClientId(transactionId, clientId);
+	}
 
 	@Transactional
 	public void deposit(Long clientId, BigDecimal amount, BigDecimal balanceAfter) {
