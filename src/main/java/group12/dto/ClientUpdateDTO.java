@@ -13,10 +13,16 @@ import jakarta.validation.constraints.Pattern;
  */
 public class ClientUpdateDTO {
 
-    @Pattern(regexp = "(?s).*\\S.*", message = "First name cannot be blank")
+    @Pattern(
+            regexp = "^[\\p{L}]+(?:[ '\u2019-][\\p{L}]+)*$",
+            message = "First name may contain only letters, spaces, apostrophes, and hyphens"
+    )
     private String firstName;
 
-    @Pattern(regexp = "(?s).*\\S.*", message = "Last name cannot be blank")
+    @Pattern(
+            regexp = "^[\\p{L}]+(?:[ '\u2019-][\\p{L}]+)*$",
+            message = "Last name may contain only letters, spaces, apostrophes, and hyphens"
+    )
     private String lastName;
 
     @Email(message = "Email must be a valid address")
