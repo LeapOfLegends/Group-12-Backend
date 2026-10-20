@@ -151,6 +151,10 @@ public class GlobalExceptionHandler {
         Throwable cause = exception;
 
         while (cause != null) {
+            if (cause instanceof ClientProfileUpdateException profileUpdateException) {
+                return profileUpdateException.getMessage();
+            }
+
             if (cause instanceof InvalidFormatException invalidFormat
                     && invalidFormat.getTargetType().isEnum()) {
                 String field = invalidFormat.getPath().stream()

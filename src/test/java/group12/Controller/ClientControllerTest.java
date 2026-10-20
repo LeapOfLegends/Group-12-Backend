@@ -86,7 +86,6 @@ class ClientControllerTest {
         request.setLastName("Martinez");
         request.setEmail("ava.updated@example.com");
         request.setPasswordHash("new-hash");
-        request.setSsn("123-45-6789");
         request.setPhoneNumber("555-987-6543");
 
         ClientEntity existing = new ClientEntity();
@@ -97,9 +96,8 @@ class ClientControllerTest {
         updated.setClientId(1L);
         updated.setFirstName("Ava");
 
-        when(clientService.getClientById(1L)).thenReturn(existing);
         when(clientService.toEntity(any(ClientUpdateDTO.class))).thenReturn(updated);
-        when(clientService.updateClient(1L, updated)).thenReturn(true);
+        when(clientService.updateClient(1L, updated)).thenReturn(updated);
 
         ResponseEntity<ClientEntity> response = clientController.updateClient(1L, request);
 
@@ -127,7 +125,6 @@ class ClientControllerTest {
         request.setLastName("Martinez");
         request.setEmail("ava@example.com");
         request.setPasswordHash("hash");
-        request.setSsn("123-45-6789");
         request.setPhoneNumber("555-123-4567");
 
         ClientEntity entity = new ClientEntity();
@@ -135,7 +132,7 @@ class ClientControllerTest {
         entity.setFirstName("Ava");
 
         when(clientService.toEntity(any(ClientUpdateDTO.class))).thenReturn(entity);
-        when(clientService.updateClient(1L, entity)).thenReturn(false);
+        when(clientService.updateClient(1L, entity)).thenReturn(null);
 
         ResponseEntity<ClientEntity> response = clientController.updateClient(1L, request);
 

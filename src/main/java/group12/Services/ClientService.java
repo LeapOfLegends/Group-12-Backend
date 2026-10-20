@@ -70,7 +70,6 @@ public class ClientService {
         client.setLastName(clientDTO.getLastName());
         client.setEmail(clientDTO.getEmail());
         client.setPasswordHash(clientDTO.getPasswordHash());
-        client.setSsn(clientDTO.getSsn());
         client.setPhoneNumber(clientDTO.getPhoneNumber());
         return client;
     }
@@ -128,14 +127,19 @@ public class ClientService {
         return true;
     }
 
-    public boolean updateClient(Long clientId, ClientEntity client) {
+    public ClientEntity updateClient(Long clientId, ClientEntity client) {
         ClientEntity existingClient = clientRepository.findById(clientId);
         if (existingClient == null) {
             throw new ClientNotFoundException("Client not found with id: " + clientId);
         }
 
-        client.setClientId(clientId);
-        return clientRepository.update(client) > 0;
+        if (client.getFirstName() != null) existingClient.setFirstName(client.getFirstName());
+        if (client.getLastName() != null) existingClient.setLastName(client.getLastName());
+        if (client.getEmail() != null) existingClient.setEmail(client.getEmail());
+        if (client.getPasswordHash() != null) existingClient.setPasswordHash(client.getPasswordHash());
+        if (client.getPhoneNumber() != null) existingClient.setPhoneNumber(client.getPhoneNumber());
+
+        return clientRepository.update(existingClient) > 0 ? existingClient : null;
     }
 
     public boolean deleteClient(Long clientId) {
