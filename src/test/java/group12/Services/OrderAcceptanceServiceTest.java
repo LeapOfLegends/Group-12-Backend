@@ -3,6 +3,8 @@ package group12.Services;
 import group12.Entities.ClientEntity;
 import group12.Entities.HoldingEntity;
 import group12.Entities.InstrumentEntity;
+import group12.Entities.MarketCode;
+import group12.Entities.MarketStatus;
 import group12.Entities.OrderEntity;
 import group12.Entities.OrderStatus;
 import group12.Entities.OrderType;
@@ -48,6 +50,8 @@ class OrderAcceptanceServiceTest {
     private InstrumentRepository instrumentRepository;
     @Mock
     private QuoteFreshnessPolicy quoteFreshnessPolicy;
+    @Mock
+    private MarketService marketService;
 
     private OrderAcceptanceService service;
 
@@ -58,7 +62,8 @@ class OrderAcceptanceServiceTest {
                 clientRepository,
                 holdingRepository,
                 instrumentRepository,
-                quoteFreshnessPolicy
+                quoteFreshnessPolicy,
+                marketService
         );
     }
 
@@ -223,6 +228,24 @@ class OrderAcceptanceServiceTest {
         service.acceptSubmittedOrder(ORDER_ID);
 
         verify(orderRepository).rejectSubmittedOrder(ORDER_ID, "STALE_QUOTE");
+    }
+
+    @Test
+    void closedIexMarket_isRejectedBeforeQuoteFreshnessCheck() {
+        OrderEntity submitted = submittedOrder(OrderType.BUY, "1");
+        InstrumentEntity instrument = freshInstrument("3");
+        instrument.setMarketCode(MarketCode.IEX);
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(submitted));
+        when(instrumentRepository.findById(INSTRUMENT_ID)).thenReturn(Optional.of(instrument));
+        when(marketService.getMarketStatusByMarketCode(MarketCode.IEX))
+                .thenReturn(MarketStatus.CLOSED);
+        stubRejection("MARKET_CLOSED");
+
+        service.acceptSubmittedOrder(ORDER_ID);
+
+        verify(orderRepository).rejectSubmittedOrder(ORDER_ID, "MARKET_CLOSED");
+        verify(quoteFreshnessPolicy, never()).isFresh(any());
+        verify(clientRepository, never()).findByIdForUpdate(anyLong());
     }
 
     @Test
