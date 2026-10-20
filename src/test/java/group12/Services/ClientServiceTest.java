@@ -192,15 +192,21 @@ class ClientServiceTest {
     void updateClient_whenClientExists_updatesClient() {
         ClientEntity existing = client(5L, "Old", "Name", "old@example.com");
         existing.setSsn("111-22-3333");
-        ClientEntity updated = client(5L, "Ava", "Martinez", "ava@example.com");
-        updated.setSsn("123-45-6789");
+        ClientEntity patch = new ClientEntity();
+        patch.setFirstName("Ava");
         when(clientRepository.findById(5L)).thenReturn(existing);
-        when(clientRepository.update(updated)).thenReturn(1);
+        when(clientRepository.update(existing)).thenReturn(1);
 
-        boolean result = clientService.updateClient(5L, updated);
+        ClientEntity result = clientService.updateClient(5L, patch);
 
-        assertTrue(result);
-        verify(clientRepository).update(updated);
+        assertSame(existing, result);
+        assertEquals("Ava", existing.getFirstName());
+        assertEquals("Name", existing.getLastName());
+        assertEquals("old@example.com", existing.getEmail());
+        assertEquals("111-22-3333", existing.getSsn());
+        assertEquals("hash", existing.getPasswordHash());
+        assertEquals("555-123-4567", existing.getPhoneNumber());
+        verify(clientRepository).update(existing);
     }
 
     @Test
