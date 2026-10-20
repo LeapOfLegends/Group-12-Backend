@@ -2,6 +2,7 @@ package group12.Repository;
 
 import group12.Entities.HoldingEntity;
 import group12.Entities.InstrumentEntity;
+import group12.Entities.MarketCode;
 import group12.marketdata.MarketSnapshot;
 import group12.marketdata.MarketSnapshotPersistenceService;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,6 +87,10 @@ class FinancialSchemaIntegrationTest {
 
     @Test
     void instrumentRepository_mapsMarketIdAcrossAllSelectQueries() {
+        assertEquals(
+                MarketCode.IEX,
+                instrumentRepository.findById(instrumentId).orElseThrow().getMarketCode()
+        );
         assertEquals(
                 marketId,
                 instrumentRepository.findById(instrumentId).orElseThrow().getMarketId()
