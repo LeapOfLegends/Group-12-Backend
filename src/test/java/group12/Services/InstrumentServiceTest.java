@@ -46,6 +46,7 @@ class InstrumentServiceTest {
 
         InstrumentDTO result = service.getInstrumentBySymbol(" aapl ");
 
+        assertEquals(1L, result.getInstrumentId());
         assertEquals("AAPL", result.getSymbol());
         assertEquals(new BigDecimal("255.12345678"), result.getBidPrice());
         assertEquals(new BigDecimal("255.22345678"), result.getAskPrice());
