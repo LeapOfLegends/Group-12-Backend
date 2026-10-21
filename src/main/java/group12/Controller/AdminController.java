@@ -41,9 +41,15 @@ public class AdminController {
     // GET ALL ADMINS
     @GetMapping
     @PreAuthorize("hasRole('SUPER_ADMIN')")
-    public List<AdminDTO> getAllAdmins() {
+    public List<AdminDTO> getAllAdmins(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String role
+    ) {
 
-        return adminService.getAllAdmins();
+        if (search == null && role == null) {
+            return adminService.getAllAdmins();
+        }
+        return adminService.searchAdmins(search, role);
     }
 
 

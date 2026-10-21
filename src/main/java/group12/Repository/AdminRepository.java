@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
@@ -29,6 +30,28 @@ public interface AdminRepository {
         ORDER BY admin_id
         """)
     List<AdminEntity> findAll();
+
+    @Select("""
+        SELECT
+            admin_id AS adminId,
+            first_name AS firstName,
+            last_name AS lastName,
+            email,
+            password_hash AS passwordHash,
+            roles AS role,
+            created_at AS createdAt
+        FROM admins
+        WHERE (#{search} IS NULL OR #{search} = ''
+               OR first_name ILIKE CONCAT('%', #{search}, '%')
+               OR last_name ILIKE CONCAT('%', #{search}, '%')
+               OR email ILIKE CONCAT('%', #{search}, '%'))
+          AND (#{role} IS NULL OR #{role} = '' OR roles = #{role})
+        ORDER BY admin_id
+        """)
+    List<AdminEntity> search(
+            @Param("search") String search,
+            @Param("role") String role
+    );
 
 
     @Select("""

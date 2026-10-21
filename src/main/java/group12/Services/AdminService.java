@@ -77,6 +77,13 @@ public class AdminService {
                 .toList();
     }
 
+        public List<AdminDTO> searchAdmins(String search, String role) {
+                return adminRepository.search(search, role)
+                                .stream()
+                                .map(this::toDTO)
+                                .toList();
+        }
+
 
     // READ ONE
     public AdminDTO getAdminById(Long adminId) {

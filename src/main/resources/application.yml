@@ -38,6 +38,13 @@ logging:
         org.mybatis: DEBUG
         org.springframework.jdbc: DEBUG
 
+warehouse:
+    datasource:
+        url: ${WAREHOUSE_DATASOURCE_URL:jdbc:postgresql://localhost:15432/data_warehouse}
+        username: ${WAREHOUSE_DATASOURCE_USERNAME:postgres}
+        password: ${WAREHOUSE_DATASOURCE_PASSWORD:}
+        driver-class-name: ${WAREHOUSE_DATASOURCE_DRIVER_CLASS_NAME:org.postgresql.Driver}
+
 alpaca:
     api-key: ${ALPACA_API_KEY:}
     secret-key: ${ALPACA_SECRET_KEY:}
