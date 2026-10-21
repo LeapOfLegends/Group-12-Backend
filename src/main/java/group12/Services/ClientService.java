@@ -22,9 +22,11 @@ import group12.exception.ClientSubmissionException;
 public class ClientService {
 
     private final ClientRepository clientRepository;
+    private final TransactionsService transactionsService;
 
-    public ClientService(ClientRepository clientRepository) {
+    public ClientService(ClientRepository clientRepository, TransactionsService transactionsService) {
         this.clientRepository = clientRepository;
+        this.transactionsService = transactionsService;
     }
 
     public List<ClientEntity> getAllClients() {
@@ -100,6 +102,11 @@ public class ClientService {
         BigDecimal updatedBalance = deposit ? balance.add(amount) : balance.subtract(amount);
         if (clientRepository.updateAccountBalance(clientId, updatedBalance) != 1) {
             throw new IllegalStateException("Failed to update client account balance");
+        }
+        if (deposit) {
+            transactionsService.deposit(clientId, amount, updatedBalance);
+        } else {
+            transactionsService.withdraw(clientId, amount, updatedBalance);
         }
         return new AccountBalanceDTO(clientId, updatedBalance);
     }
