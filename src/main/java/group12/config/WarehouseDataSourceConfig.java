@@ -20,10 +20,10 @@ public class WarehouseDataSourceConfig {
 
     @Bean
     @Primary
-        public DataSource tradingDataSource(
+    public DataSource tradingDataSource(
             @org.springframework.beans.factory.annotation.Qualifier("tradingDataSourceProperties")
             DataSourceProperties tradingDataSourceProperties
-        ) {
+    ) {
         return tradingDataSourceProperties.initializeDataSourceBuilder().build();
     }
 
@@ -42,7 +42,10 @@ public class WarehouseDataSourceConfig {
     }
 
     @Bean(name = "warehouseJdbcTemplate")
-    public JdbcTemplate warehouseJdbcTemplate(DataSource warehouseDataSource) {
+    public JdbcTemplate warehouseJdbcTemplate(
+            @org.springframework.beans.factory.annotation.Qualifier("warehouseDataSource")
+            DataSource warehouseDataSource
+        ) {
         return new JdbcTemplate(warehouseDataSource);
     }
 }

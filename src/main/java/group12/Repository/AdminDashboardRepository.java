@@ -19,9 +19,9 @@ public interface AdminDashboardRepository {
                COUNT(o.order_id) AS total_orders, MAX(o.submitted_at) AS last_order_at
         FROM clients c
         LEFT JOIN orders o ON o.client_id = c.client_id
-        WHERE (#{search} IS NULL OR #{search} = ''
-               OR CAST(c.client_id AS TEXT) = #{search}
-               OR c.email ILIKE CONCAT('%', #{search}, '%'))
+         WHERE (CAST(#{search} AS TEXT) IS NULL OR CAST(#{search} AS TEXT) = ''
+             OR CAST(c.client_id AS TEXT) = CAST(#{search} AS TEXT)
+             OR c.email ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%'))
         GROUP BY c.client_id, c.first_name, c.last_name, c.email, c.account_balance
         ORDER BY c.client_id
         LIMIT 100
@@ -59,15 +59,15 @@ public interface AdminDashboardRepository {
     @Select("""
         SELECT client_id, first_name, last_name, email, account_balance, created_at
         FROM clients
-        WHERE (#{search} IS NULL OR #{search} = ''
-               OR first_name ILIKE CONCAT('%', #{search}, '%')
-               OR last_name ILIKE CONCAT('%', #{search}, '%')
-               OR email ILIKE CONCAT('%', #{search}, '%'))
+         WHERE (CAST(#{search} AS TEXT) IS NULL OR CAST(#{search} AS TEXT) = ''
+             OR first_name ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+             OR last_name ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%')
+             OR email ILIKE CONCAT('%', CAST(#{search} AS TEXT), '%'))
         ORDER BY
-            CASE WHEN #{sort} = 'highest_balance' THEN account_balance END DESC,
-            CASE WHEN #{sort} = 'name' THEN last_name END,
-            CASE WHEN #{sort} = 'name' THEN first_name END,
-            CASE WHEN #{sort} = 'newest' THEN created_at END DESC,
+             CASE WHEN CAST(#{sort} AS TEXT) = 'highest_balance' THEN account_balance END DESC,
+             CASE WHEN CAST(#{sort} AS TEXT) = 'name' THEN last_name END,
+             CASE WHEN CAST(#{sort} AS TEXT) = 'name' THEN first_name END,
+             CASE WHEN CAST(#{sort} AS TEXT) = 'newest' THEN created_at END DESC,
             client_id
         LIMIT 100
         """)
