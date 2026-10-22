@@ -73,7 +73,7 @@ stages{
         stage('Docker Build') {
     steps {
         sh 'docker build -t capstone-backend:${BUILD_NUMBER} .'
-        sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:1.2.0'
+        sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:1.3.0'
         }
     }
     stage('Deploy to VM') {
@@ -82,13 +82,9 @@ stages{
             }
             steps {
                 sh '''
-                    docker rm -f capstone-backend || true
-
-                    for container_id in $(docker ps -aq --filter publish=8081); do
-                        docker rm -f "$container_id"
-                    done
-
-                    docker run -d --name capstone-backend -p 8081:8081 capstone-backend:1.2.0
+                    docker stop capstone-backend || true
+                    docker rm capstone-backend || true
+                    docker run -d --name capstone-backend -p 8081:8081 capstone-backend:1.3.0
                 '''
             }
         }
