@@ -74,7 +74,6 @@ public class ClientController {
         return ResponseEntity.ok(clientDashboardService.getDashboard(currentClientId(jwt)));
     }
 
-    // @PutMapping("/me")
     @PatchMapping("/me")
     @PreAuthorize("hasRole('CLIENT')")
     public ResponseEntity<ClientEntity> updateCurrentClient(
@@ -102,7 +101,7 @@ public class ClientController {
      * =========================================================================
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS', 'FINANCE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS')")
     public List<ClientEntity> getAllClients() {
         return clientService.getAllClients();
     }
