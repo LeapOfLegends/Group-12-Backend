@@ -74,7 +74,6 @@ public class ClientController {
         return ResponseEntity.ok(clientDashboardService.getDashboard(currentClientId(jwt)));
     }
 
-    @PutMapping("/me")
     @PatchMapping("/me")
     @PreAuthorize("hasRole('CLIENT')")
     public ResponseEntity<ClientEntity> updateCurrentClient(
