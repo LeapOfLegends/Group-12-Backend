@@ -50,6 +50,7 @@ class OrderLifecycleIntegrationTest {
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
         registry.add("market-data.refresh.enabled", () -> "false");
+        registry.add("market-status.refresh.enabled", () -> "false");
         registry.add("order-lifecycle.quote.max-age", () -> "30s");
     }
 
@@ -71,8 +72,9 @@ class OrderLifecycleIntegrationTest {
     @BeforeEach
     void setUp() {
         jdbcTemplate.execute(
-                "TRUNCATE TABLE orders, holdings, clients, instruments RESTART IDENTITY CASCADE"
+                "TRUNCATE TABLE orders, holdings, clients, instruments, markets RESTART IDENTITY CASCADE"
         );
+            jdbcTemplate.update("INSERT INTO markets (market_code, market_status) VALUES ('CRYPTO', 'OPEN')");
     }
 
     @Test
@@ -321,19 +323,21 @@ class OrderLifecycleIntegrationTest {
         if (askPrice == null) {
             return jdbcTemplate.queryForObject("""
                     INSERT INTO instruments (
-                        symbol, instrument_name, asset_class, currency, is_tradable
+                        market_id, symbol, instrument_name, asset_class, currency, is_tradable
                     )
-                    VALUES ('NOQUOTE-' || nextval('instruments_instrument_id_seq'),
+                    VALUES ((SELECT market_id FROM markets WHERE market_code = 'CRYPTO'),
+                            'NOQUOTE-' || nextval('instruments_instrument_id_seq'),
                             'Test Instrument', 'Equity', 'USD', ?)
                     RETURNING instrument_id
                     """, Long.class, tradable);
         }
         return jdbcTemplate.queryForObject("""
                 INSERT INTO instruments (
-                    symbol, instrument_name, asset_class, currency, is_tradable,
+                    market_id, symbol, instrument_name, asset_class, currency, is_tradable,
                     bid_price, ask_price, quote_as_of
                 )
-                VALUES ('QUOTED-' || nextval('instruments_instrument_id_seq'),
+                VALUES ((SELECT market_id FROM markets WHERE market_code = 'CRYPTO'),
+                        'QUOTED-' || nextval('instruments_instrument_id_seq'),
                         'Test Instrument', 'Equity', 'USD', ?, 1.00000000, ?,
                         %s)
                 RETURNING instrument_id

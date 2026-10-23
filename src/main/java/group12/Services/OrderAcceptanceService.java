@@ -3,8 +3,6 @@ package group12.Services;
 import group12.Entities.ClientEntity;
 import group12.Entities.HoldingEntity;
 import group12.Entities.InstrumentEntity;
-import group12.Entities.MarketCode;
-import group12.Entities.MarketStatus;
 import group12.Entities.OrderEntity;
 import group12.Entities.OrderRejectionReason;
 import group12.Entities.OrderStatus;
@@ -32,6 +30,7 @@ public class OrderAcceptanceService {
     private final HoldingRepository holdingRepository;
     private final InstrumentRepository instrumentRepository;
     private final QuoteFreshnessPolicy quoteFreshnessPolicy;
+    private final MarketTradingService marketTradingService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrderEntity acceptSubmittedOrder(Long orderId) {
@@ -50,10 +49,9 @@ public class OrderAcceptanceService {
         if (!instrument.isTradable()) {
             return reject(orderId, OrderRejectionReason.INSTRUMENT_NOT_TRADABLE);
         }
-        if (instrument.getMarketCode() == MarketCode.IEX
-                && marketService.getMarketStatusByMarketCode(MarketCode.IEX)
-                == MarketStatus.CLOSED) {
-            return reject(orderId, OrderRejectionReason.MARKET_CLOSED);
+        var availability = marketTradingService.availability(instrument.getMarketCode());
+        if (!availability.tradingAllowed()) {
+            return reject(orderId, availability.rejectionReason());
         }
         if (instrument.getBidPrice() == null
                 || instrument.getAskPrice() == null
@@ -152,5 +150,4 @@ public class OrderAcceptanceService {
                 .orElseThrow(() -> new OrderNotFoundException("Order not found"));
     }
 
-    private final MarketService marketService;
 }
