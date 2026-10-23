@@ -101,7 +101,7 @@ public class ClientController {
      * =========================================================================
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS', 'FINANCE')")
     public List<ClientEntity> getAllClients() {
         return clientService.getAllClients();
     }
