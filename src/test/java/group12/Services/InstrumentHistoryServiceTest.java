@@ -42,6 +42,7 @@ import static org.mockito.Mockito.when;
 class InstrumentHistoryServiceTest {
 
     private static final Long INSTRUMENT_ID = 12L;
+    private static final String SYMBOL = "AAPL";
     private static final Instant NOW = Instant.parse("2026-10-22T18:17:00Z");
 
     private InstrumentRepository instrumentRepository;
@@ -57,7 +58,7 @@ class InstrumentHistoryServiceTest {
         provider = mock(HistoricalMarketDataProvider.class);
         store = new ArrayList<>();
 
-        when(instrumentRepository.findById(INSTRUMENT_ID))
+        when(instrumentRepository.findBySymbol(SYMBOL))
                 .thenReturn(Optional.of(instrument()));
         when(provider.supports(any())).thenReturn(true);
         when(historyRepository.findBars(eq(INSTRUMENT_ID), any(), any(), any()))
@@ -97,7 +98,7 @@ class InstrumentHistoryServiceTest {
             String range,
             HistoricalTimeframe expectedTimeframe
     ) {
-        service.getHistory(INSTRUMENT_ID, range);
+        service.getHistory(SYMBOL, range);
 
         verify(provider, atLeastOnce()).getHistoricalBars(
                 any(), eq(expectedTimeframe), any(), any()
@@ -114,8 +115,8 @@ class InstrumentHistoryServiceTest {
                 any(), eq(HistoricalTimeframe.FIVE_MINUTES), any(), any()
         )).thenReturn(fetched);
 
-        InstrumentHistoryDTO first = service.getHistory(INSTRUMENT_ID, "1D");
-        InstrumentHistoryDTO second = service.getHistory(INSTRUMENT_ID, "1D");
+        InstrumentHistoryDTO first = service.getHistory(SYMBOL, "1D");
+        InstrumentHistoryDTO second = service.getHistory(SYMBOL, "1D");
 
         assertThat(first.points()).hasSize(2);
         assertThat(second.points()).hasSize(2);
@@ -135,7 +136,7 @@ class InstrumentHistoryServiceTest {
                 any(), eq(HistoricalTimeframe.ONE_DAY), any(), any()
         )).thenReturn(List.of(bar("2026-10-21T04:00:00Z", "250")));
 
-        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1M");
+        InstrumentHistoryDTO result = service.getHistory(SYMBOL, "1M");
 
         ArgumentCaptor<OffsetDateTime> start = ArgumentCaptor.forClass(OffsetDateTime.class);
         verify(provider).getHistoricalBars(
@@ -152,7 +153,7 @@ class InstrumentHistoryServiceTest {
                 bar("2025-12-01T05:00:00Z", "200"),
                 bar("2026-10-12T04:00:00Z", "249"));
 
-        service.getHistory(INSTRUMENT_ID, "1Y");
+        service.getHistory(SYMBOL, "1Y");
 
         ArgumentCaptor<OffsetDateTime> end = ArgumentCaptor.forClass(OffsetDateTime.class);
         verify(provider).getHistoricalBars(
@@ -169,7 +170,7 @@ class InstrumentHistoryServiceTest {
                 bar("2026-10-23T13:30:00Z", "250"),
                 bar("2026-10-23T13:35:00Z", "251"));
 
-        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1D");
+        InstrumentHistoryDTO result = service.getHistory(SYMBOL, "1D");
 
         assertThat(result.points()).hasSize(2);
         assertThat(result.points()).allMatch(point ->
@@ -186,7 +187,7 @@ class InstrumentHistoryServiceTest {
                 bar("2026-12-24T14:30:00Z", "250"),
                 bar("2026-12-24T14:35:00Z", "251"));
 
-        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1D");
+        InstrumentHistoryDTO result = service.getHistory(SYMBOL, "1D");
 
         assertThat(result.partial()).isFalse();
         assertThat(result.points()).hasSize(2);
@@ -205,7 +206,7 @@ class InstrumentHistoryServiceTest {
                 bar("2026-11-02T14:30:00Z", "250"), // 09:30 EST
                 bar("2026-11-02T14:35:00Z", "251"));
 
-        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1D");
+        InstrumentHistoryDTO result = service.getHistory(SYMBOL, "1D");
 
         assertThat(result.points()).extracting(point -> point.timestamp())
                 .contains(OffsetDateTime.parse("2026-11-02T14:30:00Z"))
@@ -218,7 +219,7 @@ class InstrumentHistoryServiceTest {
         add(HistoricalTimeframe.FIVE_MINUTES,
                 bar("2026-10-21T19:55:00Z", "249"));
 
-        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1D");
+        InstrumentHistoryDTO result = service.getHistory(SYMBOL, "1D");
 
         assertThat(result.points()).singleElement()
                 .extracting(point -> point.timestamp())
@@ -235,7 +236,7 @@ class InstrumentHistoryServiceTest {
                     bar("2026-10-%02dT13:30:00Z".formatted(day), String.valueOf(day)));
         }
 
-        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "5D");
+        InstrumentHistoryDTO result = service.getHistory(SYMBOL, "5D");
 
         assertThat(result.points()).hasSize(5);
         assertThat(result.points()).extracting(point -> point.close())
@@ -253,7 +254,7 @@ class InstrumentHistoryServiceTest {
         when(provider.getHistoricalBars(any(), any(), any(), any()))
                 .thenThrow(new MarketDataProviderException("unavailable"));
 
-        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1M");
+        InstrumentHistoryDTO result = service.getHistory(SYMBOL, "1M");
 
         assertThat(result.partial()).isTrue();
         assertThat(result.points()).hasSize(2);
@@ -261,7 +262,7 @@ class InstrumentHistoryServiceTest {
 
     @Test
     void successfulEmptyProviderResponseIsAnEmptyNonPartialResult() {
-        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1M");
+        InstrumentHistoryDTO result = service.getHistory(SYMBOL, "1M");
 
         assertThat(result.points()).isEmpty();
         assertThat(result.availableFrom()).isNull();
@@ -274,8 +275,8 @@ class InstrumentHistoryServiceTest {
         when(provider.getHistoricalBars(any(), any(), any(), any()))
                 .thenThrow(new MarketDataProviderException("unavailable"));
 
-        assertServiceUnavailable(() -> service.getHistory(INSTRUMENT_ID, "1M"));
-        assertServiceUnavailable(() -> service.getHistory(INSTRUMENT_ID, "1M"));
+        assertServiceUnavailable(() -> service.getHistory(SYMBOL, "1M"));
+        assertServiceUnavailable(() -> service.getHistory(SYMBOL, "1M"));
         verify(provider, times(1)).getHistoricalBars(any(), any(), any(), any());
     }
 
@@ -283,7 +284,7 @@ class InstrumentHistoryServiceTest {
     void unsupportedInstrumentIsUnprocessableAndDoesNotReadHistory() {
         when(provider.supports(any())).thenReturn(false);
 
-        assertThatThrownBy(() -> service.getHistory(INSTRUMENT_ID, "1D"))
+        assertThatThrownBy(() -> service.getHistory(SYMBOL, "1D"))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode().value()).isEqualTo(422)
                 );
@@ -292,13 +293,13 @@ class InstrumentHistoryServiceTest {
 
     @Test
     void missingInstrumentIsNotFoundAndInvalidRangeIsBadRequestInput() {
-        when(instrumentRepository.findById(99L)).thenReturn(Optional.empty());
+        when(instrumentRepository.findBySymbol("MISSING")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getHistory(99L, "1D"))
+        assertThatThrownBy(() -> service.getHistory("MISSING", "1D"))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND)
                 );
-        assertThatThrownBy(() -> service.getHistory(INSTRUMENT_ID, "ALL"))
+        assertThatThrownBy(() -> service.getHistory(SYMBOL, "ALL"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -32,6 +32,7 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAdjusters;
 import java.util.LinkedHashMap;
@@ -284,7 +285,7 @@ public class AlpacaHistoricalDataClient implements HistoricalMarketDataProvider 
     }
 
     private String utc(OffsetDateTime timestamp) {
-        return timestamp.withOffsetSameInstant(ZoneOffset.UTC).toString();
+        return DateTimeFormatter.ISO_INSTANT.format(timestamp.toInstant());
     }
 
     private OffsetDateTime normalizeForPostgres(OffsetDateTime timestamp) {

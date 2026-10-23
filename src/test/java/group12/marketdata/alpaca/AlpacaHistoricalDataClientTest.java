@@ -241,8 +241,10 @@ class AlpacaHistoricalDataClientTest {
     ) {
         return server.expect(requestTo(containsString("/v2/stocks/AAPL/bars")))
                 .andExpect(queryParam("timeframe", "5Min"))
-                .andExpect(queryParam("start", START.toString()))
-                .andExpect(queryParam("end", end.toString()))
+                .andExpect(queryParam("start", "2026-10-20T13:30:00Z"))
+                .andExpect(queryParam("end", end.equals(END)
+                        ? "2026-10-20T14:00:00Z"
+                        : "2026-10-20T13:37:00Z"))
                 .andExpect(queryParam("feed", "iex"))
                 .andExpect(queryParam("adjustment", "raw"))
                 .andExpect(queryParam("limit", "10000"));

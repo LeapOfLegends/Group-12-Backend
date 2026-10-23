@@ -65,14 +65,14 @@ public class InstrumentController {
         );
     }
 
-    @GetMapping("/{instrumentId}/history")
+    @GetMapping("/{symbol}/history")
     @PreAuthorize("hasAnyRole('CLIENT', 'SUPER_ADMIN', 'FINANCE', 'OPERATIONS')")
     public ResponseEntity<InstrumentHistoryDTO> getInstrumentHistory(
-            @PathVariable Long instrumentId,
+            @PathVariable String symbol,
             @RequestParam("range") String range
     ) {
         return ResponseEntity.ok(
-                instrumentHistoryService.getHistory(instrumentId, range)
+                instrumentHistoryService.getHistory(symbol, range)
         );
     }
 }

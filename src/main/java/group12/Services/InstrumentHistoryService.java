@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -66,12 +67,16 @@ public class InstrumentHistoryService {
         this.clock = clock;
     }
 
-    public InstrumentHistoryDTO getHistory(Long instrumentId, String requestedRange) {
+    public InstrumentHistoryDTO getHistory(String symbol, String requestedRange) {
         HistoricalRange range = HistoricalRange.fromApiValue(requestedRange);
-        InstrumentEntity instrument = instrumentRepository.findById(instrumentId)
+        String normalizedSymbol = symbol == null
+                ? ""
+                : symbol.trim().toUpperCase(Locale.ROOT);
+        InstrumentEntity instrument = instrumentRepository.findBySymbol(normalizedSymbol)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Instrument not found"
                 ));
+        Long instrumentId = instrument.getInstrumentId();
         MarketDataRequest request = new MarketDataRequest(
                 instrument.getSymbol(),
                 instrument.getAssetClass(),

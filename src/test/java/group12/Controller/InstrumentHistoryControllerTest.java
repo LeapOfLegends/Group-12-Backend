@@ -67,10 +67,10 @@ class InstrumentHistoryControllerTest {
 
     @Test
     void serializesSuccessfulHistoryResponse() throws Exception {
-        when(instrumentHistoryService.getHistory(12L, "1D"))
+        when(instrumentHistoryService.getHistory("AAPL", "1D"))
                 .thenReturn(successfulResponse());
 
-        mockMvc.perform(get("/instruments/12/history")
+        mockMvc.perform(get("/instruments/AAPL/history")
                         .queryParam("range", "1D")
                         .header("Authorization", "Bearer " + token("CLIENT")))
                 .andExpect(status().isOk())
@@ -90,10 +90,10 @@ class InstrumentHistoryControllerTest {
     @ParameterizedTest
     @ValueSource(strings = {"CLIENT", "SUPER_ADMIN", "FINANCE", "OPERATIONS"})
     void approvedRolesCanReadHistory(String role) throws Exception {
-        when(instrumentHistoryService.getHistory(12L, "1D"))
+        when(instrumentHistoryService.getHistory("AAPL", "1D"))
                 .thenReturn(successfulResponse());
 
-        mockMvc.perform(get("/instruments/12/history")
+        mockMvc.perform(get("/instruments/AAPL/history")
                         .queryParam("range", "1D")
                         .header("Authorization", "Bearer " + token(role)))
                 .andExpect(status().isOk());
@@ -101,22 +101,22 @@ class InstrumentHistoryControllerTest {
 
     @Test
     void historyRequiresAuthentication() throws Exception {
-        mockMvc.perform(get("/instruments/12/history").queryParam("range", "1D"))
+        mockMvc.perform(get("/instruments/AAPL/history").queryParam("range", "1D"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void missingAndInvalidRangeAreBadRequests() throws Exception {
-        when(instrumentHistoryService.getHistory(12L, "ALL"))
+        when(instrumentHistoryService.getHistory("AAPL", "ALL"))
                 .thenThrow(new IllegalArgumentException(
                         "Invalid range. Allowed values: 1D, 5D, 1M, 1Y, 5Y"
                 ));
         String token = token("CLIENT");
 
-        mockMvc.perform(get("/instruments/12/history")
+        mockMvc.perform(get("/instruments/AAPL/history")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/instruments/12/history")
+        mockMvc.perform(get("/instruments/AAPL/history")
                         .queryParam("range", "ALL")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest())
@@ -128,10 +128,10 @@ class InstrumentHistoryControllerTest {
     @ValueSource(ints = {404, 422, 503})
     void serviceStatusErrorsUseTheAgreedHttpContract(int statusCode) throws Exception {
         HttpStatus status = HttpStatus.valueOf(statusCode);
-        when(instrumentHistoryService.getHistory(12L, "1D"))
+        when(instrumentHistoryService.getHistory("AAPL", "1D"))
                 .thenThrow(new ResponseStatusException(status, "history error"));
 
-        mockMvc.perform(get("/instruments/12/history")
+        mockMvc.perform(get("/instruments/AAPL/history")
                         .queryParam("range", "1D")
                         .header("Authorization", "Bearer " + token("CLIENT")))
                 .andExpect(status().is(statusCode))
