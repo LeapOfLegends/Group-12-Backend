@@ -43,6 +43,7 @@ public class OrderExecutionService {
     private final OrderLifecycleProperties lifecycleProperties;
     private final Clock clock;
     private final OrderProducer orderProducer;
+    private final TransactionsService transactionsService;
 
     public OrderExecutionService(
             OrderRepository orderRepository,
@@ -52,7 +53,8 @@ public class OrderExecutionService {
             QuoteFreshnessPolicy quoteFreshnessPolicy,
             OrderLifecycleProperties lifecycleProperties,
             @Qualifier("orderLifecycleClock") Clock clock,
-            OrderProducer orderProducer
+            OrderProducer orderProducer,
+            TransactionsService transactionsService
     ) {
         this.orderRepository = orderRepository;
         this.clientRepository = clientRepository;
@@ -62,6 +64,7 @@ public class OrderExecutionService {
         this.lifecycleProperties = lifecycleProperties;
         this.clock = clock;
         this.orderProducer = orderProducer;
+        this.transactionsService = transactionsService;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -197,6 +200,12 @@ public class OrderExecutionService {
                 ),
                 "debit client for order " + order.getOrderId()
         );
+        transactionsService.buy(
+            order.getClientId(),
+            order.getOrderId(),
+            tradeValue,
+            balance.subtract(tradeValue)
+        );
         fillAsFinalWrite(order, executionPrice, quoteAsOf);
     }
 
@@ -248,6 +257,12 @@ public class OrderExecutionService {
                         balance.add(tradeValue)
                 ),
                 "credit client for order " + order.getOrderId()
+        );
+        transactionsService.sell(
+            order.getClientId(),
+            order.getOrderId(),
+            tradeValue,
+            balance.add(tradeValue)
         );
         fillAsFinalWrite(order, executionPrice, quoteAsOf);
     }

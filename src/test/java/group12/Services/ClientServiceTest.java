@@ -36,12 +36,14 @@ class ClientServiceTest {
 
     @Mock
     private ClientRepository clientRepository;
+    @Mock
+    private TransactionsService transactionsService;
 
     private ClientService clientService;
 
     @BeforeEach
     void setUp() {
-        clientService = new ClientService(clientRepository);
+        clientService = new ClientService(clientRepository, transactionsService);
     }
 
     @Test
