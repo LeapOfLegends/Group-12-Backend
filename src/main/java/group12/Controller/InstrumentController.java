@@ -65,9 +65,20 @@ public class InstrumentController {
         );
     }
 
-    @GetMapping("/{symbol}/history")
+    @GetMapping("/{instrumentId:\\d+}/history")
     @PreAuthorize("hasAnyRole('CLIENT', 'SUPER_ADMIN', 'FINANCE', 'OPERATIONS')")
-    public ResponseEntity<InstrumentHistoryDTO> getInstrumentHistory(
+    public ResponseEntity<InstrumentHistoryDTO> getInstrumentHistoryById(
+            @PathVariable Long instrumentId,
+            @RequestParam("range") String range
+    ) {
+        return ResponseEntity.ok(
+                instrumentHistoryService.getHistory(instrumentId, range)
+        );
+    }
+
+    @GetMapping("/{symbol:[A-Za-z][A-Za-z0-9.-]*}/history")
+    @PreAuthorize("hasAnyRole('CLIENT', 'SUPER_ADMIN', 'FINANCE', 'OPERATIONS')")
+    public ResponseEntity<InstrumentHistoryDTO> getInstrumentHistoryBySymbol(
             @PathVariable String symbol,
             @RequestParam("range") String range
     ) {
