@@ -58,6 +58,8 @@ class OrderExecutionServiceTest {
     private InstrumentRepository instrumentRepository;
     @Mock
     private OrderProducer orderProducer;
+        @Mock
+        private TransactionsService transactionsService;
 
     private OrderExecutionService service;
 
@@ -75,7 +77,8 @@ class OrderExecutionServiceTest {
                 new QuoteFreshnessPolicy(lifecycleProperties, clock),
                 lifecycleProperties,
                 clock,
-                orderProducer
+                orderProducer,
+                transactionsService
         );
     }
 
