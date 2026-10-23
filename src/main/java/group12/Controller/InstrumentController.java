@@ -1,6 +1,8 @@
 package group12.Controller;
 
 import group12.dto.InstrumentDTO;
+import group12.dto.InstrumentHistoryDTO;
+import group12.Services.InstrumentHistoryService;
 import group12.Services.InstrumentService;
 
 import org.springframework.http.ResponseEntity;
@@ -14,9 +16,14 @@ import java.util.List;
 public class InstrumentController {
 
     private final InstrumentService instrumentService;
+    private final InstrumentHistoryService instrumentHistoryService;
 
-    public InstrumentController(InstrumentService instrumentService) {
+    public InstrumentController(
+            InstrumentService instrumentService,
+            InstrumentHistoryService instrumentHistoryService
+    ) {
         this.instrumentService = instrumentService;
+        this.instrumentHistoryService = instrumentHistoryService;
     }
 
     /*
@@ -55,6 +62,17 @@ public class InstrumentController {
 
         return ResponseEntity.ok(
                 instrumentService.getInstrumentBySymbol(symbol)
+        );
+    }
+
+    @GetMapping("/{instrumentId}/history")
+    @PreAuthorize("hasAnyRole('CLIENT', 'SUPER_ADMIN', 'FINANCE', 'OPERATIONS')")
+    public ResponseEntity<InstrumentHistoryDTO> getInstrumentHistory(
+            @PathVariable Long instrumentId,
+            @RequestParam("range") String range
+    ) {
+        return ResponseEntity.ok(
+                instrumentHistoryService.getHistory(instrumentId, range)
         );
     }
 }
