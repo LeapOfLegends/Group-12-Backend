@@ -107,7 +107,7 @@ public class ClientController {
     }
 
     @GetMapping("/{clientId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS', 'FINANCE')")
     public ResponseEntity<ClientEntity> getClientById(@PathVariable Long clientId) {
         ClientEntity client = clientService.getClientById(clientId);
         return ResponseEntity.ok(client);
