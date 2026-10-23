@@ -72,3 +72,21 @@ CREATE TABLE holdings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (client_id, instrument_id)
 );
+
+CREATE TABLE transactions (
+    transaction_id BIGSERIAL PRIMARY KEY,
+    client_id BIGINT NOT NULL REFERENCES clients(client_id),
+    order_id BIGINT UNIQUE REFERENCES orders(order_id),
+    transaction_type VARCHAR(20) NOT NULL CHECK (transaction_type IN ('DEPOSIT', 'WITHDRAWAL', 'BUY', 'SELL')),
+    amount NUMERIC(40,16) NOT NULL,
+    balance_after NUMERIC(40,16) NOT NULL CHECK (balance_after >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (
+        (transaction_type IN ('BUY', 'SELL') AND order_id IS NOT NULL)
+        OR (transaction_type IN ('DEPOSIT', 'WITHDRAWAL') AND order_id IS NULL)
+    ),
+    CHECK (
+        (transaction_type IN ('DEPOSIT', 'SELL') AND amount > 0)
+        OR (transaction_type IN ('WITHDRAWAL', 'BUY') AND amount < 0)
+    )
+);
