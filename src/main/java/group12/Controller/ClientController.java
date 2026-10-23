@@ -101,13 +101,13 @@ public class ClientController {
      * =========================================================================
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS', 'FINANCE')")
     public List<ClientEntity> getAllClients() {
         return clientService.getAllClients();
     }
 
     @GetMapping("/{clientId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS', 'FINANCE')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'OPERATIONS')")
     public ResponseEntity<ClientEntity> getClientById(@PathVariable Long clientId) {
         ClientEntity client = clientService.getClientById(clientId);
         return ResponseEntity.ok(client);
