@@ -3,11 +3,23 @@ package group12.Repository;
 import org.apache.ibatis.annotations.*;
 import group12.Entities.TransactionsEntity;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 
 @Mapper
 public interface TransactionsRepository {
+
+        @Select("""
+                SELECT COALESCE(SUM(ABS(amount)), 0)
+                FROM transactions
+                WHERE transaction_type = #{type}
+                    AND (CAST(#{from} AS timestamptz) IS NULL OR created_at >= #{from})
+                    AND created_at < #{to}
+                """)
+        BigDecimal getFundingTotal(@Param("type") String type,
+                                                             @Param("from") OffsetDateTime from,
+                                                             @Param("to") OffsetDateTime to);
 
     @Select("""
         SELECT
