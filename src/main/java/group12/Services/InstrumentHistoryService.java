@@ -13,6 +13,7 @@ import group12.marketdata.MarketDataRequest;
 import group12.marketdata.exception.MarketDataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -57,7 +58,7 @@ public class InstrumentHistoryService {
             InstrumentRepository instrumentRepository,
             InstrumentPriceHistoryRepository historyRepository,
             List<HistoricalMarketDataProvider> providers,
-            Clock clock
+            @Qualifier("instrumentHistoryClock") Clock clock
     ) {
         this.instrumentRepository = instrumentRepository;
         this.historyRepository = historyRepository;
