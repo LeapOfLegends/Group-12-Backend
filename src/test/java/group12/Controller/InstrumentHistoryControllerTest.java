@@ -87,6 +87,19 @@ class InstrumentHistoryControllerTest {
                 .andExpect(jsonPath("$.points[0].close").value(250.25));
     }
 
+    @Test
+    void retrievesHistoryByInstrumentId() throws Exception {
+        when(instrumentHistoryService.getHistory(12L, "1D"))
+                .thenReturn(successfulResponse());
+
+        mockMvc.perform(get("/instruments/12/history")
+                        .queryParam("range", "1D")
+                        .header("Authorization", "Bearer " + token("CLIENT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.instrumentId").value(12))
+                .andExpect(jsonPath("$.symbol").value("AAPL"));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"CLIENT", "SUPER_ADMIN", "FINANCE", "OPERATIONS"})
     void approvedRolesCanReadHistory(String role) throws Exception {

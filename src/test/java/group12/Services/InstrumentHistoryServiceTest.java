@@ -60,6 +60,8 @@ class InstrumentHistoryServiceTest {
 
         when(instrumentRepository.findBySymbol(SYMBOL))
                 .thenReturn(Optional.of(instrument()));
+        when(instrumentRepository.findById(INSTRUMENT_ID))
+                .thenReturn(Optional.of(instrument()));
         when(provider.supports(any())).thenReturn(true);
         when(historyRepository.findBars(eq(INSTRUMENT_ID), any(), any(), any()))
                 .thenAnswer(invocation -> {
@@ -103,6 +105,15 @@ class InstrumentHistoryServiceTest {
         verify(provider, atLeastOnce()).getHistoricalBars(
                 any(), eq(expectedTimeframe), any(), any()
         );
+    }
+
+    @Test
+    void resolvesHistoryByInstrumentId() {
+        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1D");
+
+        assertThat(result.instrumentId()).isEqualTo(INSTRUMENT_ID);
+        assertThat(result.symbol()).isEqualTo(SYMBOL);
+        verify(instrumentRepository).findById(INSTRUMENT_ID);
     }
 
     @Test
@@ -294,8 +305,13 @@ class InstrumentHistoryServiceTest {
     @Test
     void missingInstrumentIsNotFoundAndInvalidRangeIsBadRequestInput() {
         when(instrumentRepository.findBySymbol("MISSING")).thenReturn(Optional.empty());
+        when(instrumentRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getHistory("MISSING", "1D"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND)
+                );
+        assertThatThrownBy(() -> service.getHistory(99L, "1D"))
                 .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND)
                 );
