@@ -87,6 +87,7 @@ stages{
                     docker run -d --name capstone-backend -p 8081:8081 capstone-backend:1.3.0
                 '''
             }
+            
         }
     }
 

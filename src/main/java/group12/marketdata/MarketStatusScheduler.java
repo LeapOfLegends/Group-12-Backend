@@ -43,7 +43,8 @@ public class MarketStatusScheduler {
         this.clock = clock;
     }
 
-    @Scheduled(fixedDelayString = "${market-status.refresh.interval:30m}")
+    // Run at second zero of minutes 00 and 30, rather than 30 minutes after completion.
+    @Scheduled(cron = "${market-status.refresh.cron:0 */30 * * * *}", zone = "UTC")
     public void runRefreshCycle() {
         if (!cycleRunning.compareAndSet(false, true)) {
             return;
