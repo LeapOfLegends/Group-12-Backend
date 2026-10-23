@@ -76,6 +76,22 @@ public class InstrumentHistoryService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Instrument not found"
                 ));
+        return getHistory(instrument, range);
+    }
+
+    public InstrumentHistoryDTO getHistory(Long instrumentId, String requestedRange) {
+        HistoricalRange range = HistoricalRange.fromApiValue(requestedRange);
+        InstrumentEntity instrument = instrumentRepository.findById(instrumentId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Instrument not found"
+                ));
+        return getHistory(instrument, range);
+    }
+
+    private InstrumentHistoryDTO getHistory(
+            InstrumentEntity instrument,
+            HistoricalRange range
+    ) {
         Long instrumentId = instrument.getInstrumentId();
         MarketDataRequest request = new MarketDataRequest(
                 instrument.getSymbol(),

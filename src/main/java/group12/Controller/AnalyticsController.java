@@ -1,6 +1,8 @@
 package group12.Controller;
 
 import group12.Services.AnalyticsService;
+import group12.Services.PlatformMetricsService;
+import group12.dto.PlatformMetricsDTO;
 import group12.dto.ClientCountDTO;
 import group12.dto.MostTradedInstrumentDTO;
 import group12.dto.OrderStatusDTO;
@@ -12,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -23,6 +26,12 @@ import java.util.List;
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
+    private final PlatformMetricsService platformMetricsService;
+
+    @GetMapping("/platform-metrics")
+    public PlatformMetricsDTO getPlatformMetrics(@RequestParam(defaultValue = "all") String range) {
+        return platformMetricsService.summarize(range);
+    }
 
     @GetMapping("/clients/counts")
     public List<ClientCountDTO> getClientCounts() {
