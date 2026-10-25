@@ -4,6 +4,7 @@ import group12.Entities.ClientEntity;
 import group12.Entities.HoldingEntity;
 import group12.Entities.InstrumentEntity;
 import group12.Entities.MarketCode;
+import group12.Entities.MarketEntity;
 import group12.Entities.MarketStatus;
 import group12.Entities.OrderEntity;
 import group12.Entities.OrderStatus;
@@ -11,6 +12,7 @@ import group12.Entities.OrderType;
 import group12.Repository.ClientRepository;
 import group12.Repository.HoldingRepository;
 import group12.Repository.InstrumentRepository;
+import group12.Repository.MarketRepository;
 import group12.Repository.OrderRepository;
 import group12.exception.OrderNotFoundException;
 import group12.orderlifecycle.QuoteFreshnessPolicy;
@@ -21,7 +23,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,7 +56,7 @@ class OrderAcceptanceServiceTest {
     @Mock
     private QuoteFreshnessPolicy quoteFreshnessPolicy;
     @Mock
-    private MarketService marketService;
+    private MarketRepository marketRepository;
 
     private OrderAcceptanceService service;
 
@@ -63,7 +68,9 @@ class OrderAcceptanceServiceTest {
                 holdingRepository,
                 instrumentRepository,
                 quoteFreshnessPolicy,
-                marketService
+                new MarketTradingService(marketRepository,
+                    Clock.fixed(OffsetDateTime.parse("2026-10-02T15:00:00Z").toInstant(), ZoneOffset.UTC),
+                    Duration.ofSeconds(90))
         );
     }
 
@@ -237,8 +244,10 @@ class OrderAcceptanceServiceTest {
         instrument.setMarketCode(MarketCode.IEX);
         when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(submitted));
         when(instrumentRepository.findById(INSTRUMENT_ID)).thenReturn(Optional.of(instrument));
-        when(marketService.getMarketStatusByMarketCode(MarketCode.IEX))
-                .thenReturn(MarketStatus.CLOSED);
+        MarketEntity market = new MarketEntity();
+        market.setMarketStatus(MarketStatus.CLOSED);
+        market.setStatusAsOf(OffsetDateTime.parse("2026-10-02T15:00:00Z"));
+        when(marketRepository.getMarketEntityForUpdate(MarketCode.IEX)).thenReturn(market);
         stubRejection("MARKET_CLOSED");
 
         service.acceptSubmittedOrder(ORDER_ID);
@@ -246,6 +255,42 @@ class OrderAcceptanceServiceTest {
         verify(orderRepository).rejectSubmittedOrder(ORDER_ID, "MARKET_CLOSED");
         verify(quoteFreshnessPolicy, never()).isFresh(any());
         verify(clientRepository, never()).findByIdForUpdate(anyLong());
+    }
+
+    @Test
+    void closedMarketSell_isRejectedWithoutLockingHoldings() {
+        OrderEntity submitted = submittedOrder(OrderType.SELL, "1");
+        InstrumentEntity instrument = freshInstrument("3");
+        instrument.setMarketCode(MarketCode.LSE);
+        MarketEntity market = new MarketEntity();
+        market.setMarketStatus(MarketStatus.CLOSED);
+        market.setStatusAsOf(OffsetDateTime.parse("2026-10-02T15:00:00Z"));
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(submitted));
+        when(instrumentRepository.findById(INSTRUMENT_ID)).thenReturn(Optional.of(instrument));
+        when(marketRepository.getMarketEntityForUpdate(MarketCode.LSE)).thenReturn(market);
+        stubRejection("MARKET_CLOSED");
+
+        service.acceptSubmittedOrder(ORDER_ID);
+
+        verify(orderRepository).rejectSubmittedOrder(ORDER_ID, "MARKET_CLOSED");
+        verify(holdingRepository, never()).getHoldingByInstrumentIdAndClientIdForUpdate(anyLong(), anyLong());
+        verify(orderRepository, never()).acceptSubmittedSellOrder(anyLong());
+    }
+
+    @Test
+    void unknownMarketStatus_isRejectedWithoutReservingCash() {
+        OrderEntity submitted = submittedOrder(OrderType.BUY, "1");
+        InstrumentEntity instrument = freshInstrument("3");
+        instrument.setMarketCode(MarketCode.IEX);
+        when(orderRepository.findByIdForUpdate(ORDER_ID)).thenReturn(Optional.of(submitted));
+        when(instrumentRepository.findById(INSTRUMENT_ID)).thenReturn(Optional.of(instrument));
+        stubRejection("MARKET_STATUS_UNAVAILABLE");
+
+        service.acceptSubmittedOrder(ORDER_ID);
+
+        verify(orderRepository).rejectSubmittedOrder(ORDER_ID, "MARKET_STATUS_UNAVAILABLE");
+        verify(clientRepository, never()).findByIdForUpdate(anyLong());
+        verify(orderRepository, never()).acceptSubmittedBuyOrder(anyLong(), any());
     }
 
     @Test
@@ -305,6 +350,7 @@ class OrderAcceptanceServiceTest {
     private static InstrumentEntity freshInstrument(String askPrice) {
         InstrumentEntity instrument = new InstrumentEntity();
         instrument.setInstrumentId(INSTRUMENT_ID);
+        instrument.setMarketCode(MarketCode.CRYPTO);
         instrument.setTradable(true);
         instrument.setBidPrice(new BigDecimal("2"));
         instrument.setAskPrice(new BigDecimal(askPrice));

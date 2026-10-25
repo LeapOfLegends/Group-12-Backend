@@ -122,9 +122,11 @@ market-data:
         interval: ${MARKET_DATA_REFRESH_INTERVAL:5s}
 
 market-status:
+    # Covers the 30-minute schedule plus a small allowance for refresh latency.
+    max-age: ${MARKET_STATUS_MAX_AGE:35m}
     refresh:
         enabled: ${MARKET_STATUS_REFRESH_ENABLED:true}
-        interval: ${MARKET_STATUS_REFRESH_INTERVAL:30m}
+        cron: "${MARKET_STATUS_REFRESH_CRON:0 */30 * * * *}"
 
 order-lifecycle:
     quote:
