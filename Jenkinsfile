@@ -78,6 +78,7 @@ stages{
     steps {
         sh 'docker build -t capstone-backend:${BUILD_NUMBER} .'
         sh 'docker tag capstone-backend:${BUILD_NUMBER} capstone-backend:1.3.0'
+        sh 'docker build -t capstone-etl:${BUILD_NUMBER} ETL-Pipeline'
         }
     }
     stage('Deploy to VM') {
@@ -90,6 +91,12 @@ stages{
                         docker network inspect capstone-network >/dev/null 2>&1 || docker network create capstone-network
                         docker rm -f capstone-backend 2>/dev/null || true
                         docker run -d --name capstone-backend --network capstone-network --env-file "$BACKEND_ENV_FILE" --restart unless-stopped -p 8081:8081 capstone-backend:${BUILD_NUMBER}
+                    '''
+                }
+                withCredentials([file(credentialsId: 'group-12-etl-env', variable: 'ETL_ENV_FILE')]) {
+                    sh '''
+                        docker rm -f capstone-etl 2>/dev/null || true
+                        docker run -d --name capstone-etl --network capstone-network --env-file "$ETL_ENV_FILE" --restart unless-stopped capstone-etl:${BUILD_NUMBER}
                     '''
                 }
             }

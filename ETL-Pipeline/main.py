@@ -8,6 +8,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import pandas as pd
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
@@ -69,7 +71,21 @@ class ETLPipeline:
         
         logger.info("ETL Pipeline initialized successfully")
         return True
-    
+
+    @staticmethod
+    def _record_watermark(record):
+        """
+        Timestamp a record contributes to the watermark: filled_at, else submitted_at
+
+        Records come back from a DataFrame, so a missing filled_at is NaT, which is
+        truthy and cannot be stored, so `or` alone does not fall back
+        """
+        for key in ('filled_at', 'submitted_at'):
+            value = record.get(key)
+            if value is not None and not pd.isna(value):
+                return value
+        return None
+
     def run(self, full_load: bool = False) -> bool:
         """
         Execute the complete ETL pipeline
@@ -158,8 +174,7 @@ class ETLPipeline:
             # Step 9: Update watermark
             logger.info("Step 9: Updating watermark...")
             max_filled_at = max(
-                (record.get('filled_at') or record.get('submitted_at') 
-                 for record in enhanced_records),
+                (ts for ts in map(self._record_watermark, enhanced_records) if ts is not None),
                 default=last_filled_at
             )
             

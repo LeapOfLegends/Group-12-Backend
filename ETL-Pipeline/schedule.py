@@ -5,6 +5,7 @@ Runs the ETL pipeline at 4:00 PM ET every weekday
 
 import logging
 import sys
+import time
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -121,7 +122,7 @@ def main():
         
         # Keep the scheduler running
         while True:
-            pass
+            time.sleep(60)
             
     except KeyboardInterrupt:
         logger.info("Scheduler interrupted by user")
