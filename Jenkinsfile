@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+
     environment {
     JAVA_HOME = '/usr/lib/jvm/java-25-amazon-corretto'
     PATH = "${JAVA_HOME}/bin:${env.PATH}"
@@ -81,11 +85,13 @@ stages{
                 branch 'main'
             }
             steps {
-                sh '''
-                    docker stop capstone-backend || true
-                    docker rm capstone-backend || true
-                    docker run -d --name capstone-backend -p 8081:8081 capstone-backend:1.3.0
-                '''
+                withCredentials([file(credentialsId: 'group-12-backend-env', variable: 'BACKEND_ENV_FILE')]) {
+                    sh '''
+                        docker network inspect capstone-network >/dev/null 2>&1 || docker network create capstone-network
+                        docker rm -f capstone-backend 2>/dev/null || true
+                        docker run -d --name capstone-backend --network capstone-network --env-file "$BACKEND_ENV_FILE" --restart unless-stopped -p 8081:8081 capstone-backend:${BUILD_NUMBER}
+                    '''
+                }
             }
             
         }
