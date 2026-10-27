@@ -54,3 +54,26 @@ Quotes and trades are updated independently because either group may be absent. 
 ## Order execution boundary
 
 Market-data retrieval and order execution remain separate. Order validation and execution do not call Alpaca or Biquote directly. They read persisted values from the PostgreSQL `instruments` table: buy execution uses the ask and sell execution uses the bid. Biquote supplies quote data only and is not LEAP's execution venue.
+
+## Historical crypto and FX data
+
+The existing instrument-history endpoint routes one `MarketDataRequest` to exactly one
+historical adapter. Alpaca serves allowlisted USD crypto pairs from
+`/v1beta3/crypto/us/bars`; Biquote serves the six supported FX pairs from
+`/api/{symbol}/ohlc`. These adapters reuse the live providers' configured `RestClient`
+instances but remain separate from the live `MarketDataProvider` interface.
+
+Crypto and FX intraday charts use rolling 24-hour and 120-hour UTC windows. Completed
+daily, weekly, and monthly boundaries are UTC-based. Biquote exposes native `5m`,
+`30m`, and `1d` candles; weekly and monthly FX points are derived from completed daily
+candles by taking the final available close in each finished ISO week or UTC calendar
+month. No candle is created for a weekend, holiday, or other period with no source data.
+
+Biquote OHLC requests use a maximum `limit` of 1,000 and are split into bounded,
+overlapping date windows with timestamp de-duplication. Provider retention can be less
+than the requested 1Y or 5Y chart range and is not guaranteed for any supported FX
+symbol. Retention depth has not been verified with live provider calls; successful empty
+or sparse responses are therefore treated as available provider history, while an HTTP,
+parsing, rate-limit, timeout, or bounded-chunk failure is reported through the existing
+best-effort `partial` response semantics. Cached valid points remain usable after a known
+partial retrieval.
