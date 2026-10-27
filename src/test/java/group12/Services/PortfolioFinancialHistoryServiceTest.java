@@ -261,6 +261,61 @@ class PortfolioFinancialHistoryServiceTest {
         );
     }
 
+    @Test
+    void rejectsRequestsAndFinancialEventsBeforeUtcAccountCreation() {
+        ClientEntity client = client("10");
+        client.setCreatedAt(BASE.toLocalDateTime());
+        when(clientRepository.findById(CLIENT_ID)).thenReturn(client);
+
+        assertFailureAt(List.of(BASE.minusNanos(1)), "before account creation");
+
+        stubHistory(
+                "10",
+                List.of(transaction(
+                        1, null, "DEPOSIT", "10", "10", BASE.minusNanos(1)
+                )),
+                List.of(),
+                List.of()
+        );
+        ClientEntity sameClient = client("10");
+        sameClient.setCreatedAt(BASE.toLocalDateTime());
+        when(clientRepository.findById(CLIENT_ID)).thenReturn(sameClient);
+        assertFailureAt(List.of(BASE.plusDays(1)), "predates account creation");
+    }
+
+    @Test
+    void acceptsPostgresPrecisionDifferenceButRejectsDifferentTradeEventTime() {
+        OffsetDateTime transactionAt = BASE.plusMinutes(1);
+        OrderEntity withinTolerance = filledOrder(
+                11L, 101L, OrderType.BUY, "1", "10",
+                transactionAt.plusNanos(999_999)
+        );
+        stubHistory(
+                "0",
+                List.of(
+                        transaction(1, null, "DEPOSIT", "10", "10", BASE),
+                        transaction(2, 11L, "BUY", "-10", "0", transactionAt)
+                ),
+                List.of(withinTolerance),
+                List.of(holding(101L, "1"))
+        );
+        service.reconstruct(CLIENT_ID, List.of(BASE.plusDays(1)));
+
+        OrderEntity differentEvent = filledOrder(
+                11L, 101L, OrderType.BUY, "1", "10", transactionAt.plusSeconds(1)
+        );
+        stubHistory(
+                "0",
+                List.of(
+                        transaction(1, null, "DEPOSIT", "10", "10", BASE),
+                        transaction(2, 11L, "BUY", "-10", "0", transactionAt)
+                ),
+                List.of(differentEvent),
+                List.of(holding(101L, "1"))
+        );
+        assertFailureContains("timestamp mismatches");
+    }
+
     private void stubHistory(
             String currentBalance,
             List<TransactionsEntity> transactions,
@@ -275,9 +330,16 @@ class PortfolioFinancialHistoryServiceTest {
     }
 
     private void assertFailureContains(String expectedMessage) {
+        assertFailureAt(List.of(BASE.plusDays(1)), expectedMessage);
+    }
+
+    private void assertFailureAt(
+            List<OffsetDateTime> timestamps,
+            String expectedMessage
+    ) {
         FinancialHistoryReconstructionException exception = assertThrows(
                 FinancialHistoryReconstructionException.class,
-                () -> service.reconstruct(CLIENT_ID, List.of(BASE.plusDays(1)))
+                () -> service.reconstruct(CLIENT_ID, timestamps)
         );
         assertTrue(exception.getMessage().contains(expectedMessage), exception.getMessage());
     }

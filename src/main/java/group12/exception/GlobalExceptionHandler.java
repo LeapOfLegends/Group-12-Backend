@@ -47,6 +47,14 @@ public class GlobalExceptionHandler {
         return errorResponse(HttpStatus.NOT_FOUND, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(FinancialHistoryReconstructionException.class)
+    public ResponseEntity<ApiError> handleFinancialHistoryReconstruction(
+            FinancialHistoryReconstructionException exception,
+            HttpServletRequest request
+    ) {
+        return errorResponse(HttpStatus.CONFLICT, exception.getMessage(), request);
+    }
+
     @ExceptionHandler(HoldingNotFoundException.class)
     public ResponseEntity<ApiError> handleHoldingNotFound(
             HoldingNotFoundException exception,

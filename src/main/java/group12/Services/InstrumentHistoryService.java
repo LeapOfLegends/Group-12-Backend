@@ -90,6 +90,45 @@ public class InstrumentHistoryService {
         return getHistory(instrument, range);
     }
 
+    /**
+     * Internal bulk-oriented history access for portfolio valuation.  Provider routing,
+     * caching, completed-bar persistence, partial-result handling, and request chunking
+     * remain centralized here.  The caller is responsible for applying candle completion
+     * times because a persisted bar_start is not itself an as-of price timestamp.
+     */
+    public PriceHistory loadCompletedPriceHistory(
+            Long instrumentId,
+            HistoricalTimeframe timeframe,
+            OffsetDateTime startInclusive,
+            OffsetDateTime endExclusive
+    ) {
+        if (instrumentId == null || timeframe == null || startInclusive == null
+                || endExclusive == null || !startInclusive.isBefore(endExclusive)) {
+            throw new IllegalArgumentException("A valid instrument history window is required");
+        }
+        InstrumentEntity instrument = instrumentRepository.findById(instrumentId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNPROCESSABLE_ENTITY,
+                        "A portfolio instrument no longer exists"
+                ));
+        MarketDataRequest request = new MarketDataRequest(
+                instrument.getSymbol(), instrument.getAssetClass(), instrument.getCurrency(),
+                instrument.getMarketCode()
+        );
+        HistoricalMarketDataProvider provider = selectProvider(request);
+        OffsetDateTime now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
+        OffsetDateTime eligibleEnd = eligibleEnd(request, now, timeframe);
+        OffsetDateTime requestedEnd = earlier(endExclusive, eligibleEnd);
+        OffsetDateTime requestedStart = startInclusive.minus(priceCarryLookback(timeframe));
+        if (!requestedStart.isBefore(requestedEnd)) {
+            return new PriceHistory(instrument, timeframe, List.of(), false);
+        }
+        LoadResult result = loadWindow(
+                instrumentId, request, provider, timeframe, requestedStart, requestedEnd
+        );
+        return new PriceHistory(instrument, timeframe, result.bars(), result.partial());
+    }
+
     private InstrumentHistoryDTO getHistory(
             InstrumentEntity instrument,
             HistoricalRange range
@@ -513,6 +552,15 @@ public class InstrumentHistoryService {
         };
     }
 
+    private Duration priceCarryLookback(HistoricalTimeframe timeframe) {
+        return switch (timeframe) {
+            case FIVE_MINUTES, THIRTY_MINUTES -> Duration.ofDays(5);
+            case ONE_DAY -> Duration.ofDays(8);
+            case ONE_WEEK -> Duration.ofDays(16);
+            case ONE_MONTH -> Duration.ofDays(45);
+        };
+    }
+
     private boolean isEquity(MarketDataRequest request) {
         return request != null
                 && "Equity".equalsIgnoreCase(request.assetClass())
@@ -617,6 +665,17 @@ public class InstrumentHistoryService {
     }
 
     private record LoadResult(List<HistoricalBar> bars, boolean partial) {
+    }
+
+    public record PriceHistory(
+            InstrumentEntity instrument,
+            HistoricalTimeframe timeframe,
+            List<HistoricalBar> bars,
+            boolean partial
+    ) {
+        public PriceHistory {
+            bars = List.copyOf(bars);
+        }
     }
 
     private enum CalendarUnit {

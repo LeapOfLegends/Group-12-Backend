@@ -20,7 +20,10 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,6 +37,13 @@ import java.util.Set;
 public class PortfolioFinancialHistoryService {
 
     private static final BigDecimal ZERO = BigDecimal.ZERO;
+    /**
+     * PostgreSQL stores clients.created_at without a zone.  The application treats that
+     * legacy column as UTC, matching the database/session convention used for ledger
+     * timestamptz values.
+     */
+    private static final ZoneOffset ACCOUNT_CREATION_OFFSET = ZoneOffset.UTC;
+    private static final Duration TRADE_TIMESTAMP_TOLERANCE = Duration.ofMillis(1);
 
     private final ClientRepository clientRepository;
     private final TransactionsRepository transactionsRepository;
@@ -71,6 +81,10 @@ public class PortfolioFinancialHistoryService {
         if (client.getCreatedAt() == null) {
             throw failure(clientId, "account creation time is missing");
         }
+        OffsetDateTime accountCreatedAt = accountCreatedAt(client.getCreatedAt());
+        if (!timestamps.isEmpty() && timestamps.getFirst().isBefore(accountCreatedAt)) {
+            throw failure(clientId, "requested history begins before account creation");
+        }
 
         List<TransactionsEntity> transactions =
                 transactionsRepository.getFinancialHistoryByClientId(clientId);
@@ -90,6 +104,13 @@ public class PortfolioFinancialHistoryService {
 
         for (TransactionsEntity transaction : transactions) {
             validateTransactionOrder(clientId, previous, transaction);
+            if (transaction.getCreatedAt().isBefore(accountCreatedAt)) {
+                throw failure(
+                        clientId,
+                        "transaction " + transaction.getTransactionId()
+                                + " predates account creation"
+                );
+            }
 
             while (timestampIndex < timestamps.size()
                     && timestamps.get(timestampIndex).isBefore(transaction.getCreatedAt())) {
@@ -353,7 +374,21 @@ public class PortfolioFinancialHistoryService {
         if (transaction.getAmount().compareTo(expectedAmount) != 0) {
             throw failure(clientId, "transaction " + transactionId + " amount mismatches its order");
         }
+        Duration timestampDifference = Duration.between(
+                order.getFilledAt().toInstant(), transaction.getCreatedAt().toInstant()
+        ).abs();
+        if (timestampDifference.compareTo(TRADE_TIMESTAMP_TOLERANCE) > 0) {
+            throw failure(
+                    clientId,
+                    "transaction " + transactionId + " timestamp mismatches its filled order"
+            );
+        }
         return order;
+    }
+
+    public static OffsetDateTime accountCreatedAt(LocalDateTime createdAt) {
+        return Objects.requireNonNull(createdAt, "createdAt is required")
+                .atOffset(ACCOUNT_CREATION_OFFSET);
     }
 
     private void reconcileCash(
