@@ -18,10 +18,11 @@ class OrderLifecyclePropertiesTest {
     void defaultsMatchExistingLifecycleConfiguration() {
         OrderLifecycleProperties properties = new OrderLifecycleProperties();
 
-        assertEquals(Duration.ofSeconds(30), properties.getQuote().getMaxAge());
+        assertEquals(Duration.ofSeconds(60), properties.getQuote().getMaxAge());
         assertEquals(Duration.ofMinutes(2), properties.getExecution().getMaxWait());
         assertEquals(Duration.ofSeconds(30), properties.getRecovery().getInterval());
         assertEquals(Duration.ofMinutes(1), properties.getRecovery().getSubmittedAge());
+        assertEquals(Duration.ofMinutes(1), properties.getRecovery().getAcceptedAge());
     }
 
     @Test
@@ -31,7 +32,8 @@ class OrderLifecyclePropertiesTest {
                         "order-lifecycle.quote.max-age=45s",
                         "order-lifecycle.execution.max-wait=3m",
                         "order-lifecycle.recovery.interval=40s",
-                        "order-lifecycle.recovery.submitted-age=2m"
+                        "order-lifecycle.recovery.submitted-age=2m",
+                        "order-lifecycle.recovery.accepted-age=90s"
                 )
                 .run(context -> {
                     OrderLifecycleProperties properties = context.getBean(
@@ -47,6 +49,10 @@ class OrderLifecyclePropertiesTest {
                     assertEquals(
                             Duration.ofMinutes(2),
                             properties.getRecovery().getSubmittedAge()
+                    );
+                    assertEquals(
+                            Duration.ofSeconds(90),
+                            properties.getRecovery().getAcceptedAge()
                     );
                 });
     }
@@ -75,6 +81,10 @@ class OrderLifecyclePropertiesTest {
             assertThrows(
                     IllegalArgumentException.class,
                     () -> properties.getRecovery().setSubmittedAge(invalid)
+            );
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> properties.getRecovery().setAcceptedAge(invalid)
             );
         }
     }

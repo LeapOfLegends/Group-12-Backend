@@ -25,7 +25,7 @@ public class OrderLifecycleProperties {
 
     public static class Quote {
 
-        private Duration maxAge = Duration.ofSeconds(30);
+        private Duration maxAge = Duration.ofSeconds(60);
 
         public Duration getMaxAge() {
             return maxAge;
@@ -59,6 +59,7 @@ public class OrderLifecycleProperties {
 
         private Duration interval = Duration.ofSeconds(30);
         private Duration submittedAge = Duration.ofMinutes(1);
+        private Duration acceptedAge = Duration.ofMinutes(1);
 
         public Duration getInterval() {
             return interval;
@@ -79,6 +80,17 @@ public class OrderLifecycleProperties {
             this.submittedAge = requirePositive(
                     submittedAge,
                     "order-lifecycle.recovery.submitted-age must be positive"
+            );
+        }
+
+        public Duration getAcceptedAge() {
+            return acceptedAge;
+        }
+
+        public void setAcceptedAge(Duration acceptedAge) {
+            this.acceptedAge = requirePositive(
+                    acceptedAge,
+                    "order-lifecycle.recovery.accepted-age must be positive"
             );
         }
     }
