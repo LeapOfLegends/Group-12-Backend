@@ -229,30 +229,49 @@ class OrderExecutionIntegrationTest {
     }
 
     @Test
-    void failureAfterHoldingWriteRollsBackHoldingCashAndOrderTogether() {
+    void failureAfterTradeTransactionWriteRollsBackEntireFinancialEvent() {
         Long clientId = insertClient("100");
         Long instrumentId = insertInstrument(true, "9", "10", "99", "CURRENT_TIMESTAMP");
         Long orderId = insertAcceptedOrder(
                 clientId, instrumentId, OrderType.BUY, "2", "20", "CURRENT_TIMESTAMP"
         );
         jdbcTemplate.execute("""
-                CREATE FUNCTION reject_balance_update() RETURNS TRIGGER AS $$
+                CREATE FUNCTION reject_order_fill() RETURNS TRIGGER AS $$
                 BEGIN
-                    RAISE EXCEPTION 'simulated balance write failure';
+                    IF NEW.status = 'FILLED' THEN
+                        RAISE EXCEPTION 'simulated fill write failure';
+                    END IF;
+                    RETURN NEW;
                 END;
                 $$ LANGUAGE plpgsql
                 """);
         jdbcTemplate.execute("""
-                CREATE TRIGGER fail_balance_update
-                BEFORE UPDATE OF account_balance ON clients
-                FOR EACH ROW EXECUTE FUNCTION reject_balance_update()
+                CREATE TRIGGER fail_order_fill
+                BEFORE UPDATE OF status ON orders
+                FOR EACH ROW EXECUTE FUNCTION reject_order_fill()
                 """);
 
-        assertThrows(RuntimeException.class, () -> executionService.executeAcceptedOrder(orderId));
+        try {
+            assertThrows(
+                    RuntimeException.class,
+                    () -> executionService.executeAcceptedOrder(orderId)
+            );
+        } finally {
+            jdbcTemplate.execute("DROP TRIGGER fail_order_fill ON orders");
+            jdbcTemplate.execute("DROP FUNCTION reject_order_fill()");
+        }
 
         assertEquals("ACCEPTED", status(orderId));
         assertMoney("100.0000000000000000", balance(clientId));
         assertEquals(0, holdingCount(clientId, instrumentId));
+        assertEquals(
+                0,
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM transactions WHERE order_id = ?",
+                        Integer.class,
+                        orderId
+                )
+        );
     }
 
     @Test

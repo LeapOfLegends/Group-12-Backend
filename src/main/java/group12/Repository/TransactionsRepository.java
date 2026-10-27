@@ -46,6 +46,23 @@ public interface TransactionsRepository {
             balance_after,
             created_at
         FROM transactions
+        WHERE client_id = #{clientId}
+        ORDER BY created_at, transaction_id
+        """)
+    List<TransactionsEntity> getFinancialHistoryByClientId(
+            @Param("clientId") Long clientId
+    );
+
+    @Select("""
+        SELECT
+            transaction_id,
+            client_id,
+            order_id,
+            transaction_type,
+            amount,
+            balance_after,
+            created_at
+        FROM transactions
         WHERE transaction_id = #{transactionId}
         """)
     TransactionsEntity getTransactionById(@Param("transactionId") Long transactionId);
