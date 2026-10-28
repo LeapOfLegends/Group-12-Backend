@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # OLTP Database (Trading Application)
   trading-db:
@@ -13,7 +11,9 @@ services:
       - "15432:5432"
     volumes:
       - trading_db_data:/var/lib/postgresql/data
-      - ./Database-Setup:/docker-entrypoint-initdb.d
+      - ./Database-Setup/createTables.sql:/docker-entrypoint-initdb.d/01-create-tables.sql:ro
+      - ./Database-Setup/seedTables.sql:/docker-entrypoint-initdb.d/02-seed-tables.sql:ro
+      - ./Database-Setup/seedDemoClientJohnPage.sql:/docker-entrypoint-initdb.d/03-seed-demo-client.sql:ro
     networks:
       - trading-network
     healthcheck:
@@ -34,7 +34,8 @@ services:
       - "15433:5432"
     volumes:
       - warehouse_db_data:/var/lib/postgresql
-      - ./Database-Setup/createWarehouse.sql:/docker-entrypoint-initdb.d/01-warehouse.sql
+      - ./Database-Setup/createWarehouse.sql:/docker-entrypoint-initdb.d/01-create-warehouse.sql:ro
+      - ./Database-Setup/seedWarehouseData.sql:/docker-entrypoint-initdb.d/02-seed-warehouse.sql:ro
     networks:
       - trading-network
     healthcheck:
