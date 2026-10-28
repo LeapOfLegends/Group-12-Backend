@@ -9,6 +9,7 @@ import group12.marketdata.HistoricalBar;
 import group12.marketdata.HistoricalMarketDataProvider;
 import group12.marketdata.HistoricalTimeframe;
 import group12.marketdata.exception.MarketDataProviderException;
+import group12.marketdata.exception.PartialHistoricalDataException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -103,6 +104,35 @@ class InstrumentHistoryServiceTest {
         service.getHistory(SYMBOL, range);
 
         verify(provider, atLeastOnce()).getHistoricalBars(
+                any(), eq(expectedTimeframe), any(), any()
+        );
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "Crypto,CRYPTO,BTC/USD,1D,FIVE_MINUTES",
+            "Crypto,CRYPTO,BTC/USD,5D,THIRTY_MINUTES",
+            "Crypto,CRYPTO,BTC/USD,1M,ONE_DAY",
+            "Crypto,CRYPTO,BTC/USD,1Y,ONE_WEEK",
+            "Crypto,CRYPTO,BTC/USD,5Y,ONE_MONTH",
+            "FOREX,FX,EUR/USD,1D,FIVE_MINUTES",
+            "FOREX,FX,EUR/USD,5D,THIRTY_MINUTES",
+            "FOREX,FX,EUR/USD,1M,ONE_DAY",
+            "FOREX,FX,EUR/USD,1Y,ONE_WEEK",
+            "FOREX,FX,EUR/USD,5Y,ONE_MONTH"
+    })
+    void mapsEveryCryptoAndFxRangeToTheFrozenTimeframe(
+            String assetClass,
+            MarketCode marketCode,
+            String symbol,
+            String range,
+            HistoricalTimeframe expectedTimeframe
+    ) {
+        useInstrument(instrument(symbol, assetClass, marketCode));
+
+        service.getHistory(INSTRUMENT_ID, range);
+
+        verify(provider).getHistoricalBars(
                 any(), eq(expectedTimeframe), any(), any()
         );
     }
@@ -303,6 +333,139 @@ class InstrumentHistoryServiceTest {
     }
 
     @Test
+    void cryptoOneDayUsesTrailingTwentyFourHoursWithoutEquitySessionFiltering() {
+        useInstrument(instrument("BTC/USD", "Crypto", MarketCode.CRYPTO));
+        when(provider.getHistoricalBars(
+                any(), eq(HistoricalTimeframe.FIVE_MINUTES), any(), any()
+        )).thenReturn(List.of(
+                bar("2026-10-21T19:00:00Z", "64000"),
+                bar("2026-10-22T03:00:00Z", "64500")
+        ));
+
+        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1D");
+
+        ArgumentCaptor<OffsetDateTime> start = ArgumentCaptor.forClass(OffsetDateTime.class);
+        ArgumentCaptor<OffsetDateTime> end = ArgumentCaptor.forClass(OffsetDateTime.class);
+        verify(provider).getHistoricalBars(
+                any(), eq(HistoricalTimeframe.FIVE_MINUTES), start.capture(), end.capture()
+        );
+        assertThat(start.getValue()).isEqualTo(time("2026-10-21T18:17:00Z"));
+        assertThat(end.getValue()).isEqualTo(time("2026-10-22T18:15:00Z"));
+        assertThat(result.points()).hasSize(2);
+    }
+
+    @Test
+    void fxFiveDaysUsesTrailingOneHundredTwentyHoursAndPreservesWeekendGaps() {
+        useInstrument(instrument("EUR/USD", "FOREX", MarketCode.FX));
+        when(provider.getHistoricalBars(
+                any(), eq(HistoricalTimeframe.THIRTY_MINUTES), any(), any()
+        )).thenReturn(List.of(
+                bar("2026-10-19T00:00:00Z", "1.10"),
+                bar("2026-10-21T00:00:00Z", "1.12")
+        ));
+
+        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "5D");
+
+        ArgumentCaptor<OffsetDateTime> start = ArgumentCaptor.forClass(OffsetDateTime.class);
+        ArgumentCaptor<OffsetDateTime> end = ArgumentCaptor.forClass(OffsetDateTime.class);
+        verify(provider).getHistoricalBars(
+                any(), eq(HistoricalTimeframe.THIRTY_MINUTES), start.capture(), end.capture()
+        );
+        assertThat(start.getValue()).isEqualTo(time("2026-10-17T18:17:00Z"));
+        assertThat(end.getValue()).isEqualTo(time("2026-10-22T18:00:00Z"));
+        assertThat(result.points()).extracting(point -> point.timestamp())
+                .containsExactly(time("2026-10-19T00:00:00Z"), time("2026-10-21T00:00:00Z"));
+    }
+
+    @Test
+    void successfulEmptyFxWeekendCoverageDoesNotRefetchEveryNewBoundary() {
+        useInstrument(instrument("EUR/USD", "FOREX", MarketCode.FX));
+        Clock advancingClock = mock(Clock.class);
+        when(advancingClock.instant()).thenReturn(
+                Instant.parse("2026-10-24T10:01:00Z"),
+                Instant.parse("2026-10-24T10:06:00Z")
+        );
+        service = new InstrumentHistoryService(
+                instrumentRepository,
+                historyRepository,
+                List.of(provider),
+                advancingClock
+        );
+
+        service.getHistory(INSTRUMENT_ID, "1D");
+        service.getHistory(INSTRUMENT_ID, "1D");
+
+        verify(provider, times(1)).getHistoricalBars(
+                any(), eq(HistoricalTimeframe.FIVE_MINUTES), any(), any()
+        );
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "1M,ONE_DAY,2026-10-22T00:00:00Z",
+            "1Y,ONE_WEEK,2026-10-19T00:00:00Z",
+            "5Y,ONE_MONTH,2026-10-01T00:00:00Z"
+    })
+    void cryptoAndFxUseUtcCalendarCompletionBoundaries(
+            String range,
+            HistoricalTimeframe timeframe,
+            String expectedEnd
+    ) {
+        useInstrument(instrument("BTC/USD", "Crypto", MarketCode.CRYPTO));
+
+        service.getHistory(INSTRUMENT_ID, range);
+
+        ArgumentCaptor<OffsetDateTime> end = ArgumentCaptor.forClass(OffsetDateTime.class);
+        verify(provider).getHistoricalBars(any(), eq(timeframe), any(), end.capture());
+        assertThat(end.getValue()).isEqualTo(time(expectedEnd));
+    }
+
+    @Test
+    void selectsExactlyOneSupportingProviderAndRejectsAmbiguousRouting() {
+        HistoricalMarketDataProvider unsupported = mock(HistoricalMarketDataProvider.class);
+        when(unsupported.supports(any())).thenReturn(false);
+        service = new InstrumentHistoryService(
+                instrumentRepository,
+                historyRepository,
+                List.of(unsupported, provider),
+                Clock.fixed(NOW, ZoneOffset.UTC)
+        );
+
+        service.getHistory(INSTRUMENT_ID, "1M");
+        verify(provider).getHistoricalBars(any(), any(), any(), any());
+        verify(unsupported, never()).getHistoricalBars(any(), any(), any(), any());
+
+        when(unsupported.supports(any())).thenReturn(true);
+        assertThatThrownBy(() -> service.getHistory(INSTRUMENT_ID, "1M"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode())
+                                .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
+                );
+    }
+
+    @Test
+    void incompleteBarsAreNotPersistedAndKnownPartialBarsAreUsable() {
+        useInstrument(instrument("BTC/USD", "Crypto", MarketCode.CRYPTO));
+        HistoricalBar completed = bar("2026-10-22T12:00:00Z", "64000");
+        HistoricalBar incomplete = new HistoricalBar(
+                time("2026-10-22T12:05:00Z"), new BigDecimal("64100"), false
+        );
+        when(provider.getHistoricalBars(any(), any(), any(), any()))
+                .thenThrow(new PartialHistoricalDataException(
+                        "limited", null, List.of(completed, incomplete)
+                ));
+
+        InstrumentHistoryDTO result = service.getHistory(INSTRUMENT_ID, "1D");
+
+        assertThat(result.partial()).isTrue();
+        assertThat(result.points()).singleElement()
+                .extracting(point -> point.close()).isEqualTo(new BigDecimal("64000"));
+        assertThat(store).singleElement().satisfies(item ->
+                assertThat(item.bar().complete()).isTrue()
+        );
+    }
+
+    @Test
     void missingInstrumentIsNotFoundAndInvalidRangeIsBadRequestInput() {
         when(instrumentRepository.findBySymbol("MISSING")).thenReturn(Optional.empty());
         when(instrumentRepository.findById(99L)).thenReturn(Optional.empty());
@@ -354,15 +517,32 @@ class InstrumentHistoryServiceTest {
     }
 
     private InstrumentEntity instrument() {
+        return instrument("AAPL", "Equity", MarketCode.IEX);
+    }
+
+    private InstrumentEntity instrument(
+            String symbol,
+            String assetClass,
+            MarketCode marketCode
+    ) {
         InstrumentEntity instrument = new InstrumentEntity();
         instrument.setInstrumentId(INSTRUMENT_ID);
-        instrument.setMarketCode(MarketCode.IEX);
-        instrument.setSymbol("AAPL");
-        instrument.setInstrumentName("Apple Inc.");
-        instrument.setAssetClass("Equity");
+        instrument.setMarketCode(marketCode);
+        instrument.setSymbol(symbol);
+        instrument.setInstrumentName(symbol);
+        instrument.setAssetClass(assetClass);
         instrument.setCurrency("USD");
         instrument.setTradable(true);
         return instrument;
+    }
+
+    private void useInstrument(InstrumentEntity instrument) {
+        when(instrumentRepository.findById(INSTRUMENT_ID)).thenReturn(Optional.of(instrument));
+        when(instrumentRepository.findBySymbol(any())).thenReturn(Optional.of(instrument));
+    }
+
+    private OffsetDateTime time(String value) {
+        return OffsetDateTime.parse(value);
     }
 
     private record StoredBar(HistoricalTimeframe timeframe, HistoricalBar bar) {

@@ -117,6 +117,33 @@ public interface OrderRepository {
     List<OrderEntity> findByClientId(@Param("clientId") Long clientId);
 
 
+    @Select("""
+        SELECT
+            order_id,
+            client_id,
+            instrument_id,
+            order_type,
+            quantity,
+            status,
+            reserved_cash,
+            submitted_at,
+            accepted_at,
+            rejected_at,
+            failed_at,
+            filled_at,
+            execution_price,
+            execution_quote_as_of,
+            trade_value,
+            rejection_reason,
+            failure_reason
+        FROM orders
+        WHERE client_id = #{clientId}
+          AND status = 'FILLED'
+        ORDER BY filled_at, order_id
+        """)
+    List<OrderEntity> findFilledByClientId(@Param("clientId") Long clientId);
+
+
     @Insert("""
         INSERT INTO orders (
             client_id,

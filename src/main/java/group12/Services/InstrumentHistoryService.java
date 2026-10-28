@@ -1,6 +1,7 @@
 package group12.Services;
 
 import group12.Entities.InstrumentEntity;
+import group12.Entities.MarketCode;
 import group12.Repository.InstrumentPriceHistoryRepository;
 import group12.Repository.InstrumentRepository;
 import group12.dto.InstrumentHistoryDTO;
@@ -11,6 +12,7 @@ import group12.marketdata.HistoricalRange;
 import group12.marketdata.HistoricalTimeframe;
 import group12.marketdata.MarketDataRequest;
 import group12.marketdata.exception.MarketDataException;
+import group12.marketdata.exception.PartialHistoricalDataException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -88,6 +90,45 @@ public class InstrumentHistoryService {
         return getHistory(instrument, range);
     }
 
+    /**
+     * Internal bulk-oriented history access for portfolio valuation.  Provider routing,
+     * caching, completed-bar persistence, partial-result handling, and request chunking
+     * remain centralized here.  The caller is responsible for applying candle completion
+     * times because a persisted bar_start is not itself an as-of price timestamp.
+     */
+    public PriceHistory loadCompletedPriceHistory(
+            Long instrumentId,
+            HistoricalTimeframe timeframe,
+            OffsetDateTime startInclusive,
+            OffsetDateTime endExclusive
+    ) {
+        if (instrumentId == null || timeframe == null || startInclusive == null
+                || endExclusive == null || !startInclusive.isBefore(endExclusive)) {
+            throw new IllegalArgumentException("A valid instrument history window is required");
+        }
+        InstrumentEntity instrument = instrumentRepository.findById(instrumentId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNPROCESSABLE_ENTITY,
+                        "A portfolio instrument no longer exists"
+                ));
+        MarketDataRequest request = new MarketDataRequest(
+                instrument.getSymbol(), instrument.getAssetClass(), instrument.getCurrency(),
+                instrument.getMarketCode()
+        );
+        HistoricalMarketDataProvider provider = selectProvider(request);
+        OffsetDateTime now = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
+        OffsetDateTime eligibleEnd = eligibleEnd(request, now, timeframe);
+        OffsetDateTime requestedEnd = earlier(endExclusive, eligibleEnd);
+        OffsetDateTime requestedStart = startInclusive.minus(priceCarryLookback(timeframe));
+        if (!requestedStart.isBefore(requestedEnd)) {
+            return new PriceHistory(instrument, timeframe, List.of(), false);
+        }
+        LoadResult result = loadWindow(
+                instrumentId, request, provider, timeframe, requestedStart, requestedEnd
+        );
+        return new PriceHistory(instrument, timeframe, result.bars(), result.partial());
+    }
+
     private InstrumentHistoryDTO getHistory(
             InstrumentEntity instrument,
             HistoricalRange range
@@ -102,25 +143,30 @@ public class InstrumentHistoryService {
         HistoricalMarketDataProvider provider = selectProvider(request);
         OffsetDateTime referenceTime = OffsetDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         HistoricalTimeframe timeframe = range.getTimeframe();
-        OffsetDateTime endExclusive = eligibleEnd(referenceTime, timeframe);
+        OffsetDateTime endExclusive = eligibleEnd(request, referenceTime, timeframe);
+        boolean equity = isEquity(request);
 
         LoadResult loadResult;
-        if (range.isIntradayEquityRange()) {
+        if (range.isIntradayEquityRange() && equity) {
             loadResult = loadIntradayHistory(
                     instrumentId, request, provider, range, referenceTime, endExclusive
             );
         } else {
-            OffsetDateTime startInclusive = calendarRangeStart(referenceTime, range);
+            OffsetDateTime startInclusive = range.isIntradayEquityRange()
+                    ? rollingRangeStart(referenceTime, range)
+                    : calendarRangeStart(referenceTime, range);
             loadResult = loadWindow(
                     instrumentId, request, provider, timeframe, startInclusive, endExclusive
             );
         }
 
-        List<HistoricalBar> selected = range.isIntradayEquityRange()
+        List<HistoricalBar> selected = range.isIntradayEquityRange() && equity
                 ? selectLatestSessions(loadResult.bars(), range.representedSessionCount())
                 : loadResult.bars().stream()
                         .filter(bar -> !bar.barStart().isBefore(
-                                calendarRangeStart(referenceTime, range)
+                                range.isIntradayEquityRange()
+                                        ? rollingRangeStart(referenceTime, range)
+                                        : calendarRangeStart(referenceTime, range)
                         ))
                         .sorted(Comparator.comparing(HistoricalBar::barStart))
                         .toList();
@@ -177,7 +223,7 @@ public class InstrumentHistoryService {
                 instrumentId, timeframe, startInclusive, endExclusive
         );
         List<FetchWindow> missing = missingWindows(
-                key, cached, timeframe, startInclusive, endExclusive
+                key, cached, request, timeframe, startInclusive, endExclusive
         );
         boolean partial = false;
 
@@ -193,15 +239,25 @@ public class InstrumentHistoryService {
                 List<HistoricalBar> fetched = provider.getHistoricalBars(
                         request, timeframe, window.startInclusive(), window.endExclusive()
                 );
-                List<HistoricalBar> completed = fetched.stream()
-                        .filter(HistoricalBar::complete)
-                        .filter(bar -> !bar.barStart().isBefore(window.startInclusive()))
-                        .filter(bar -> bar.barStart().isBefore(window.endExclusive()))
-                        .sorted(Comparator.comparing(HistoricalBar::barStart))
-                        .toList();
+                List<HistoricalBar> completed = completedInWindow(fetched, window);
                 historyRepository.upsertBars(instrumentId, timeframe, completed);
                 mergeCoverage(key, window);
                 failedUntil.remove(key);
+            } catch (PartialHistoricalDataException exception) {
+                historyRepository.upsertBars(
+                        instrumentId,
+                        timeframe,
+                        completedInWindow(exception.getBars(), window)
+                );
+                LOGGER.warn(
+                        "Historical market-data retrieval was partial for instrument {} and {}: {}",
+                        instrumentId,
+                        timeframe.getDatabaseValue(),
+                        exception.getMessage()
+                );
+                failedUntil.put(key, clock.instant().plus(FAILURE_COOLDOWN));
+                partial = true;
+                break;
             } catch (MarketDataException exception) {
                 LOGGER.warn(
                         "Historical market-data retrieval failed for instrument {} and {}: {}",
@@ -224,6 +280,7 @@ public class InstrumentHistoryService {
     private List<FetchWindow> missingWindows(
             CacheKey key,
             List<HistoricalBar> cached,
+            MarketDataRequest request,
             HistoricalTimeframe timeframe,
             OffsetDateTime requestedStart,
             OffsetDateTime requestedEnd
@@ -236,7 +293,8 @@ public class InstrumentHistoryService {
                         requestedStart, earlier(coverage.startInclusive(), requestedEnd)
                 ));
             }
-            if (coverage.endExclusive().isBefore(requestedEnd)) {
+            if (coverage.endExclusive().isBefore(requestedEnd)
+                    && !isClosedFxWeekend(request, requestedEnd)) {
                 missing.add(new FetchWindow(
                         later(coverage.endExclusive(), requestedStart), requestedEnd
                 ));
@@ -255,8 +313,8 @@ public class InstrumentHistoryService {
         if (first.barStart().isAfter(requestedStart.plus(backfillTolerance(timeframe)))) {
             missing.add(new FetchWindow(requestedStart, first.barStart()));
         }
-        if (!isSufficientlyCurrent(last, timeframe, requestedEnd)) {
-            OffsetDateTime tailStart = nextBarStart(last.barStart(), timeframe);
+        if (!isSufficientlyCurrent(last, request, timeframe, requestedEnd)) {
+            OffsetDateTime tailStart = nextBarStart(last.barStart(), request, timeframe);
             if (tailStart.isBefore(requestedEnd)) {
                 missing.add(new FetchWindow(tailStart, requestedEnd));
             }
@@ -319,10 +377,25 @@ public class InstrumentHistoryService {
         };
     }
 
+    private OffsetDateTime rollingRangeStart(
+            OffsetDateTime referenceTime,
+            HistoricalRange range
+    ) {
+        return switch (range) {
+            case ONE_DAY -> referenceTime.minusHours(24);
+            case FIVE_DAYS -> referenceTime.minusHours(120);
+            default -> throw new IllegalArgumentException("Range is not rolling intraday");
+        };
+    }
+
     private OffsetDateTime eligibleEnd(
+            MarketDataRequest request,
             OffsetDateTime referenceTime,
             HistoricalTimeframe timeframe
     ) {
+        if (!isEquity(request)) {
+            return utcEligibleEnd(referenceTime, timeframe);
+        }
         ZonedDateTime eastern = referenceTime.atZoneSameInstant(NEW_YORK);
         return switch (timeframe) {
             case FIVE_MINUTES -> truncate(referenceTime, Duration.ofMinutes(5));
@@ -344,6 +417,23 @@ public class InstrumentHistoryService {
         };
     }
 
+    private OffsetDateTime utcEligibleEnd(
+            OffsetDateTime referenceTime,
+            HistoricalTimeframe timeframe
+    ) {
+        OffsetDateTime utc = referenceTime.withOffsetSameInstant(ZoneOffset.UTC);
+        return switch (timeframe) {
+            case FIVE_MINUTES -> truncate(utc, Duration.ofMinutes(5));
+            case THIRTY_MINUTES -> truncate(utc, Duration.ofMinutes(30));
+            case ONE_DAY -> utc.toLocalDate().atStartOfDay().atOffset(ZoneOffset.UTC);
+            case ONE_WEEK -> utc.toLocalDate()
+                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                    .atStartOfDay().atOffset(ZoneOffset.UTC);
+            case ONE_MONTH -> YearMonth.from(utc).atDay(1)
+                    .atStartOfDay().atOffset(ZoneOffset.UTC);
+        };
+    }
+
     private OffsetDateTime truncate(OffsetDateTime timestamp, Duration duration) {
         long intervalSeconds = duration.toSeconds();
         long epochSeconds = timestamp.toEpochSecond();
@@ -355,9 +445,13 @@ public class InstrumentHistoryService {
 
     private boolean isSufficientlyCurrent(
             HistoricalBar last,
+            MarketDataRequest request,
             HistoricalTimeframe timeframe,
             OffsetDateTime requestedEnd
     ) {
+        if (!isEquity(request)) {
+            return !nextBarStart(last.barStart(), request, timeframe).isBefore(requestedEnd);
+        }
         ZonedDateTime lastEastern = last.barStart().atZoneSameInstant(NEW_YORK);
         ZonedDateTime referenceEastern = requestedEnd.atZoneSameInstant(NEW_YORK);
         return switch (timeframe) {
@@ -414,8 +508,19 @@ public class InstrumentHistoryService {
 
     private OffsetDateTime nextBarStart(
             OffsetDateTime barStart,
+            MarketDataRequest request,
             HistoricalTimeframe timeframe
     ) {
+        if (!isEquity(request)) {
+            OffsetDateTime utc = barStart.withOffsetSameInstant(ZoneOffset.UTC);
+            return switch (timeframe) {
+                case FIVE_MINUTES -> utc.plusMinutes(5);
+                case THIRTY_MINUTES -> utc.plusMinutes(30);
+                case ONE_DAY -> utc.plusDays(1);
+                case ONE_WEEK -> utc.plusWeeks(1);
+                case ONE_MONTH -> utc.plusMonths(1);
+            };
+        }
         return switch (timeframe) {
             case FIVE_MINUTES -> barStart.plusMinutes(5);
             case THIRTY_MINUTES -> barStart.plusMinutes(30);
@@ -445,6 +550,44 @@ public class InstrumentHistoryService {
             case ONE_WEEK -> Duration.ofDays(8);
             case ONE_MONTH -> Duration.ofDays(35);
         };
+    }
+
+    private Duration priceCarryLookback(HistoricalTimeframe timeframe) {
+        return switch (timeframe) {
+            case FIVE_MINUTES, THIRTY_MINUTES -> Duration.ofDays(5);
+            case ONE_DAY -> Duration.ofDays(8);
+            case ONE_WEEK -> Duration.ofDays(16);
+            case ONE_MONTH -> Duration.ofDays(45);
+        };
+    }
+
+    private boolean isEquity(MarketDataRequest request) {
+        return request != null
+                && "Equity".equalsIgnoreCase(request.assetClass())
+                && request.marketCode() == MarketCode.IEX;
+    }
+
+    private boolean isClosedFxWeekend(
+            MarketDataRequest request,
+            OffsetDateTime requestedEnd
+    ) {
+        if (request == null || request.marketCode() != MarketCode.FX) {
+            return false;
+        }
+        DayOfWeek day = requestedEnd.withOffsetSameInstant(ZoneOffset.UTC).getDayOfWeek();
+        return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
+    }
+
+    private List<HistoricalBar> completedInWindow(
+            List<HistoricalBar> bars,
+            FetchWindow window
+    ) {
+        return bars.stream()
+                .filter(HistoricalBar::complete)
+                .filter(bar -> !bar.barStart().isBefore(window.startInclusive()))
+                .filter(bar -> bar.barStart().isBefore(window.endExclusive()))
+                .sorted(Comparator.comparing(HistoricalBar::barStart))
+                .toList();
     }
 
     private int representedSessionCount(List<HistoricalBar> bars) {
@@ -522,6 +665,17 @@ public class InstrumentHistoryService {
     }
 
     private record LoadResult(List<HistoricalBar> bars, boolean partial) {
+    }
+
+    public record PriceHistory(
+            InstrumentEntity instrument,
+            HistoricalTimeframe timeframe,
+            List<HistoricalBar> bars,
+            boolean partial
+    ) {
+        public PriceHistory {
+            bars = List.copyOf(bars);
+        }
     }
 
     private enum CalendarUnit {

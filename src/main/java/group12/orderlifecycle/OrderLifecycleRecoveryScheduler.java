@@ -2,6 +2,7 @@ package group12.orderlifecycle;
 
 import group12.Repository.OrderRepository;
 import group12.Services.OrderAcceptanceService;
+import group12.Services.OrderExecutionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -28,6 +29,7 @@ public class OrderLifecycleRecoveryScheduler {
 
     private final OrderRepository orderRepository;
     private final OrderAcceptanceService orderAcceptanceService;
+    private final OrderExecutionService orderExecutionService;
     private final OrderLifecycleProperties lifecycleProperties;
     private final Clock clock;
     private final AtomicBoolean cycleRunning = new AtomicBoolean();
@@ -35,11 +37,13 @@ public class OrderLifecycleRecoveryScheduler {
     public OrderLifecycleRecoveryScheduler(
             OrderRepository orderRepository,
             OrderAcceptanceService orderAcceptanceService,
+            OrderExecutionService orderExecutionService,
             OrderLifecycleProperties lifecycleProperties,
             @Qualifier("orderLifecycleClock") Clock clock
     ) {
         this.orderRepository = orderRepository;
         this.orderAcceptanceService = orderAcceptanceService;
+        this.orderExecutionService = orderExecutionService;
         this.lifecycleProperties = lifecycleProperties;
         this.clock = clock;
     }
@@ -57,15 +61,28 @@ public class OrderLifecycleRecoveryScheduler {
                     ),
                     ZoneOffset.UTC
             );
-            List<Long> orderIds = orderRepository
+            List<Long> submittedOrderIds = orderRepository
                     .findSubmittedOrderIdsSubmittedBefore(submittedBefore);
 
-            for (Long orderId : orderIds) {
+            for (Long orderId : submittedOrderIds) {
                 recoverSubmittedOrder(orderId);
+            }
+
+            OffsetDateTime acceptedBefore = OffsetDateTime.ofInstant(
+                    clock.instant().minus(
+                            lifecycleProperties.getRecovery().getAcceptedAge()
+                    ),
+                    ZoneOffset.UTC
+            );
+            List<Long> acceptedOrderIds = orderRepository
+                    .findAcceptedOrderIdsAcceptedBefore(acceptedBefore);
+
+            for (Long orderId : acceptedOrderIds) {
+                recoverAcceptedOrder(orderId);
             }
         } catch (RuntimeException exception) {
             LOGGER.warn(
-                    "Scheduled submitted-order recovery failed before all orders were considered",
+                    "Scheduled order recovery failed before all orders were considered",
                     exception
             );
         } finally {
@@ -78,6 +95,14 @@ public class OrderLifecycleRecoveryScheduler {
             orderAcceptanceService.acceptSubmittedOrder(orderId);
         } catch (RuntimeException exception) {
             LOGGER.warn("Failed to recover submitted order {}", orderId, exception);
+        }
+    }
+
+    private void recoverAcceptedOrder(Long orderId) {
+        try {
+            orderExecutionService.executeAcceptedOrder(orderId);
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Failed to recover accepted order {}", orderId, exception);
         }
     }
 }

@@ -46,6 +46,10 @@ public class MarketTradingService {
             return new MarketAvailabilityDTO(marketCode, "OPEN", true,
                     "Crypto trading is available 24/7.", now, now.plus(maxStatusAge), null);
         }
+        if (marketCode == MarketCode.FX) {
+            return new MarketAvailabilityDTO(marketCode, "OPEN", true,
+                    "Forex trading is available 24/5.", now, now.plus(maxStatusAge), null);
+        }
         if (marketCode == null) {
             return unavailable(null, null);
         }

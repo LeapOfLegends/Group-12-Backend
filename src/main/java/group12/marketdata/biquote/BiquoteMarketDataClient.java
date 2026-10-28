@@ -28,29 +28,16 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 @Component
 public class BiquoteMarketDataClient implements MarketDataProvider {
 
     private static final String LATEST_QUOTES_PATH = "/api/latest";
-    private static final Map<String, String> BIQUOTE_SYMBOLS = Map.of(
-            "EUR/USD", "EURUSD",
-            "USD/JPY", "USDJPY",
-            "GBP/USD", "GBPUSD",
-            "AUD/USD", "AUDUSD",
-            "USD/CAD", "USDCAD",
-            "USD/INR", "USDINR"
-    );
-    private static final Map<String, String> DB_SYMBOLS = BIQUOTE_SYMBOLS.entrySet()
-            .stream()
-            .collect(Collectors.toUnmodifiableMap(Map.Entry::getValue, Map.Entry::getKey));
     private static final ObjectMapper RESPONSE_MAPPER = new ObjectMapper()
             .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     private static final Logger LOGGER =
@@ -69,11 +56,11 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
         if (request == null) {
             return false;
         }
-        String symbol = normalizeSymbol(request.symbol());
+        String symbol = BiquoteSymbols.normalize(request.symbol());
         return !symbol.isBlank()
                 && "FOREX".equalsIgnoreCase(request.assetClass())
                 && request.marketCode() == MarketCode.FX
-                && BIQUOTE_SYMBOLS.containsKey(symbol);
+                && BiquoteSymbols.supports(symbol);
     }
 
     @Override
@@ -87,7 +74,7 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
         Set<String> requestedProviderSymbols = new TreeSet<>();
         for (MarketDataRequest instrument : instruments) {
             String dbSymbol = validateInstrument(instrument);
-            requestedProviderSymbols.add(BIQUOTE_SYMBOLS.get(dbSymbol));
+            requestedProviderSymbols.add(BiquoteSymbols.toProviderSymbol(dbSymbol));
         }
 
         String responseBody = executeRequest(() -> restClient.get()
@@ -116,7 +103,7 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
                 return;
             }
 
-            String dbSymbol = DB_SYMBOLS.get(providerSymbol);
+            String dbSymbol = BiquoteSymbols.toInternalSymbol(providerSymbol);
             if (dbSymbol == null) {
                 return;
             }
@@ -176,7 +163,7 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
     }
 
     private String validateInstrument(MarketDataRequest instrument) {
-        String symbol = instrument == null ? "" : normalizeSymbol(instrument.symbol());
+        String symbol = instrument == null ? "" : BiquoteSymbols.normalize(instrument.symbol());
         if (!supports(instrument)) {
             throw new MarketDataProviderException(
                     "Instrument is not supported by the Biquote market-data feed: "
@@ -189,9 +176,9 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
     private String responseSymbol(String responseKey, JsonNode tick) {
         JsonNode symbol = tick == null ? null : tick.get("symbol");
         if (symbol != null && symbol.isTextual() && !symbol.textValue().isBlank()) {
-            return normalizeSymbol(symbol.textValue());
+            return BiquoteSymbols.normalize(symbol.textValue());
         }
-        return normalizeSymbol(responseKey);
+        return BiquoteSymbols.normalize(responseKey);
     }
 
     private BigDecimal decimalValue(JsonNode parent, String fieldName) {
@@ -302,7 +289,4 @@ public class BiquoteMarketDataClient implements MarketDataProvider {
         throw new MarketDataProviderException("Market-data provider rejected the request");
     }
 
-    private String normalizeSymbol(String symbol) {
-        return symbol == null ? "" : symbol.trim().toUpperCase(Locale.ROOT);
-    }
 }

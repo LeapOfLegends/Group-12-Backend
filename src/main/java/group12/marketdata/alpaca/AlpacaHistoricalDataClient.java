@@ -73,11 +73,7 @@ public class AlpacaHistoricalDataClient implements HistoricalMarketDataProvider 
             return false;
         }
         String symbol = normalizeSymbol(instrument.symbol());
-        return !symbol.isBlank()
-                && "Equity".equalsIgnoreCase(instrument.assetClass())
-                && "USD".equalsIgnoreCase(instrument.currency())
-                && instrument.marketCode() == MarketCode.IEX
-                && properties.getSupportedUsEquitySymbols().contains(symbol);
+        return isSupportedEquity(instrument, symbol) || isSupportedCrypto(instrument, symbol);
     }
 
     @Override
@@ -88,7 +84,8 @@ public class AlpacaHistoricalDataClient implements HistoricalMarketDataProvider 
             OffsetDateTime endExclusive
     ) {
         String symbol = validateRequest(instrument, timeframe, startInclusive, endExclusive);
-        validateConfiguration();
+        boolean crypto = isCrypto(instrument);
+        validateConfiguration(!crypto);
 
         Map<OffsetDateTime, HistoricalBar> bars = new LinkedHashMap<>();
         Set<String> seenTokens = new java.util.HashSet<>();
@@ -96,15 +93,15 @@ public class AlpacaHistoricalDataClient implements HistoricalMarketDataProvider 
 
         for (int page = 0; page < MAX_PAGES; page++) {
             JsonNode response = fetchPage(
-                    symbol, timeframe, startInclusive, endExclusive, pageToken
+                    symbol, timeframe, startInclusive, endExclusive, pageToken, crypto
             );
-            JsonNode barsNode = response.get("bars");
+            JsonNode barsNode = barsNode(response, symbol, crypto);
             if (barsNode == null || !barsNode.isArray()) {
                 throw malformedResponse(null);
             }
             for (JsonNode barNode : barsNode) {
                 HistoricalBar bar = mapCompletedBar(
-                        barNode, timeframe, startInclusive, endExclusive
+                        barNode, timeframe, startInclusive, endExclusive, crypto
                 );
                 if (bar != null) {
                     bars.put(bar.barStart(), bar);
@@ -138,22 +135,29 @@ public class AlpacaHistoricalDataClient implements HistoricalMarketDataProvider 
             HistoricalTimeframe timeframe,
             OffsetDateTime startInclusive,
             OffsetDateTime endExclusive,
-            String pageToken
+            String pageToken,
+            boolean crypto
     ) {
         String responseBody = executeRequest(() -> restClient.get()
                 .uri(uriBuilder -> {
                     var builder = uriBuilder
-                            .path("/v2/stocks/{symbol}/bars")
+                            .path(crypto
+                                    ? "/v1beta3/crypto/us/bars"
+                                    : "/v2/stocks/{symbol}/bars")
                             .queryParam("timeframe", timeframe.getDatabaseValue())
                             .queryParam("start", utc(startInclusive))
                             .queryParam("end", utc(endExclusive))
-                            .queryParam("feed", "iex")
-                            .queryParam("adjustment", "raw")
                             .queryParam("limit", 10_000);
+                    if (crypto) {
+                        builder.queryParam("symbols", symbol);
+                    } else {
+                        builder.queryParam("feed", "iex")
+                                .queryParam("adjustment", "raw");
+                    }
                     if (pageToken != null) {
                         builder.queryParam("page_token", pageToken);
                     }
-                    return builder.build(symbol);
+                    return crypto ? builder.build() : builder.build(symbol);
                 })
                 .header(API_KEY_HEADER, properties.getApiKey())
                 .header(SECRET_KEY_HEADER, properties.getSecretKey())
@@ -170,7 +174,8 @@ public class AlpacaHistoricalDataClient implements HistoricalMarketDataProvider 
             JsonNode node,
             HistoricalTimeframe timeframe,
             OffsetDateTime startInclusive,
-            OffsetDateTime endExclusive
+            OffsetDateTime endExclusive,
+            boolean crypto
     ) {
         if (node == null || !node.isObject()) {
             LOGGER.warn("Skipping malformed Alpaca historical bar");
@@ -184,7 +189,7 @@ public class AlpacaHistoricalDataClient implements HistoricalMarketDataProvider 
         }
         OffsetDateTime normalized = normalizeForPostgres(timestamp);
         if (normalized.isBefore(startInclusive) || !normalized.isBefore(endExclusive)
-                || !isComplete(normalized, timeframe, endExclusive)) {
+                || !isComplete(normalized, timeframe, endExclusive, crypto)) {
             return null;
         }
         return new HistoricalBar(normalized, close, true);
@@ -193,8 +198,12 @@ public class AlpacaHistoricalDataClient implements HistoricalMarketDataProvider 
     private boolean isComplete(
             OffsetDateTime barStart,
             HistoricalTimeframe timeframe,
-            OffsetDateTime referenceTime
+            OffsetDateTime referenceTime,
+            boolean crypto
     ) {
+        if (crypto) {
+            return !cryptoBarEnd(barStart, timeframe).isAfter(referenceTime);
+        }
         return switch (timeframe) {
             case FIVE_MINUTES -> !barStart.plusMinutes(5).isAfter(referenceTime);
             case THIRTY_MINUTES -> !barStart.plusMinutes(30).isAfter(referenceTime);
@@ -240,18 +249,68 @@ public class AlpacaHistoricalDataClient implements HistoricalMarketDataProvider 
         return normalizeSymbol(instrument.symbol());
     }
 
-    private void validateConfiguration() {
+    private void validateConfiguration(boolean requireIexFeed) {
         if (properties.getApiKey() == null || properties.getApiKey().isBlank()
                 || properties.getSecretKey() == null || properties.getSecretKey().isBlank()) {
             throw new MarketDataConfigurationException(
                     "Alpaca market-data credentials are not configured"
             );
         }
-        if (!"iex".equalsIgnoreCase(properties.getFeed())) {
+        if (requireIexFeed && !"iex".equalsIgnoreCase(properties.getFeed())) {
             throw new MarketDataConfigurationException(
                     "Alpaca market-data feed must be configured as iex"
             );
         }
+    }
+
+    private JsonNode barsNode(JsonNode response, String symbol, boolean crypto) {
+        JsonNode bars = response.get("bars");
+        if (!crypto) {
+            return bars;
+        }
+        if (bars == null || !bars.isObject()) {
+            throw malformedResponse(null);
+        }
+        return bars.get(symbol);
+    }
+
+    private OffsetDateTime cryptoBarEnd(
+            OffsetDateTime barStart,
+            HistoricalTimeframe timeframe
+    ) {
+        OffsetDateTime utcStart = barStart.withOffsetSameInstant(ZoneOffset.UTC);
+        return switch (timeframe) {
+            case FIVE_MINUTES -> utcStart.plusMinutes(5);
+            case THIRTY_MINUTES -> utcStart.plusMinutes(30);
+            case ONE_DAY -> utcStart.toLocalDate().plusDays(1)
+                    .atStartOfDay().atOffset(ZoneOffset.UTC);
+            case ONE_WEEK -> utcStart.toLocalDate()
+                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                    .plusWeeks(1).atStartOfDay().atOffset(ZoneOffset.UTC);
+            case ONE_MONTH -> YearMonth.from(utcStart).plusMonths(1)
+                    .atDay(1).atStartOfDay().atOffset(ZoneOffset.UTC);
+        };
+    }
+
+    private boolean isSupportedEquity(MarketDataRequest instrument, String symbol) {
+        return !symbol.isBlank()
+                && "Equity".equalsIgnoreCase(instrument.assetClass())
+                && "USD".equalsIgnoreCase(instrument.currency())
+                && instrument.marketCode() == MarketCode.IEX
+                && properties.getSupportedUsEquitySymbols().contains(symbol);
+    }
+
+    private boolean isSupportedCrypto(MarketDataRequest instrument, String symbol) {
+        return !symbol.isBlank()
+                && "Crypto".equalsIgnoreCase(instrument.assetClass())
+                && "USD".equalsIgnoreCase(instrument.currency())
+                && instrument.marketCode() == MarketCode.CRYPTO
+                && properties.getSupportedCryptoSymbols().contains(symbol);
+    }
+
+    private boolean isCrypto(MarketDataRequest instrument) {
+        return "Crypto".equalsIgnoreCase(instrument.assetClass())
+                && instrument.marketCode() == MarketCode.CRYPTO;
     }
 
     private JsonNode parseResponse(String responseBody) {

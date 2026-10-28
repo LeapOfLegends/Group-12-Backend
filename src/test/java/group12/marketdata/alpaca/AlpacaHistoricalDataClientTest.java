@@ -8,6 +8,8 @@ import group12.marketdata.exception.MarketDataProviderException;
 import group12.marketdata.exception.MarketDataRateLimitException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -44,6 +46,9 @@ class AlpacaHistoricalDataClientTest {
         properties.setSecretKey("test-secret-key");
         properties.setFeed("iex");
         properties.setSupportedUsEquitySymbols(Set.of("AAPL"));
+        properties.setSupportedCryptoSymbols(Set.of(
+                "BTC/USD", "ETH/USD", "SOL/USD", "XRP/USD", "DOGE/USD", "ADA/USD"
+        ));
         RestClient.Builder builder = RestClient.builder()
                 .baseUrl("https://data.alpaca.markets");
         server = MockRestServiceServer.bindTo(builder).build();
@@ -232,6 +237,113 @@ class AlpacaHistoricalDataClientTest {
         server.verify();
     }
 
+    @Test
+    void requestsNestedCryptoBarsWithoutEquitySpecificParameters() {
+        server.expect(requestTo(containsString("/v1beta3/crypto/us/bars")))
+                .andExpect(queryParam("symbols", "BTC/USD"))
+                .andExpect(queryParam("timeframe", "5Min"))
+                .andExpect(request -> assertThat(request.getURI().getQuery())
+                        .doesNotContain("feed=", "adjustment="))
+                .andRespond(withSuccess("""
+                        {"bars":{"BTC/USD":[
+                          {"t":"2026-10-20T13:30:00Z","c":64000.25}
+                        ]},"next_page_token":null}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThat(client.getHistoricalBars(
+                crypto(), HistoricalTimeframe.FIVE_MINUTES, START, END
+        )).singleElement().satisfies(bar -> {
+            assertThat(bar.barStart()).isEqualTo(START);
+            assertThat(bar.closePrice()).isEqualByComparingTo("64000.25");
+        });
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "FIVE_MINUTES,5Min", "THIRTY_MINUTES,30Min", "ONE_DAY,1Day",
+            "ONE_WEEK,1Week", "ONE_MONTH,1Month"
+    })
+    void mapsAllCryptoTimeframes(
+            HistoricalTimeframe timeframe,
+            String providerValue
+    ) {
+        server.expect(requestTo(containsString("/v1beta3/crypto/us/bars")))
+                .andExpect(queryParam("timeframe", providerValue))
+                .andRespond(withSuccess(
+                        "{\"bars\":{\"BTC/USD\":[]},\"next_page_token\":null}",
+                        MediaType.APPLICATION_JSON
+                ));
+
+        assertThat(client.getHistoricalBars(crypto(), timeframe, START, END)).isEmpty();
+    }
+
+    @Test
+    void cryptoPaginationDeduplicatesBoundaryBars() {
+        server.expect(requestTo(containsString("/v1beta3/crypto/us/bars")))
+                .andRespond(withSuccess("""
+                        {"bars":{"BTC/USD":[
+                          {"t":"2026-10-20T13:30:00Z","c":64000}
+                        ]},"next_page_token":"next"}
+                        """, MediaType.APPLICATION_JSON));
+        server.expect(requestTo(containsString("/v1beta3/crypto/us/bars")))
+                .andExpect(queryParam("page_token", "next"))
+                .andRespond(withSuccess("""
+                        {"bars":{"BTC/USD":[
+                          {"t":"2026-10-20T13:30:00Z","c":64001},
+                          {"t":"2026-10-20T13:35:00Z","c":64002}
+                        ]},"next_page_token":null}
+                        """, MediaType.APPLICATION_JSON));
+
+        List<HistoricalBar> bars = client.getHistoricalBars(
+                crypto(), HistoricalTimeframe.FIVE_MINUTES, START, END
+        );
+
+        assertThat(bars).hasSize(2);
+        assertThat(bars.getFirst().closePrice()).isEqualByComparingTo("64001");
+    }
+
+    @Test
+    void cryptoUsesUtcCompletionAndRetainsWeekendCandles() {
+        OffsetDateTime start = OffsetDateTime.parse("2026-10-24T00:00:00Z");
+        OffsetDateTime end = OffsetDateTime.parse("2026-10-25T12:00:00Z");
+        server.expect(requestTo(containsString("/v1beta3/crypto/us/bars")))
+                .andRespond(withSuccess("""
+                        {"bars":{"BTC/USD":[
+                          {"t":"2026-10-24T00:00:00Z","c":64000},
+                          {"t":"2026-10-25T00:00:00Z","c":65000}
+                        ]},"next_page_token":null}
+                        """, MediaType.APPLICATION_JSON));
+
+        assertThat(client.getHistoricalBars(
+                crypto(), HistoricalTimeframe.ONE_DAY, start, end
+        )).extracting(HistoricalBar::barStart)
+                .containsExactly(OffsetDateTime.parse("2026-10-24T00:00:00Z"));
+    }
+
+    @Test
+    void malformedCryptoEnvelopeAndUnsupportedSymbolAreRejected() {
+        server.expect(requestTo(containsString("/v1beta3/crypto/us/bars")))
+                .andRespond(withSuccess(
+                        "{\"bars\":[],\"next_page_token\":null}",
+                        MediaType.APPLICATION_JSON
+                ));
+        assertThatThrownBy(() -> client.getHistoricalBars(
+                crypto(), HistoricalTimeframe.FIVE_MINUTES, START, END
+        )).isInstanceOf(MarketDataProviderException.class);
+
+        MarketDataRequest unsupported = new MarketDataRequest(
+                "LTC/USD", "Crypto", "USD", MarketCode.CRYPTO
+        );
+        assertThat(client.supports(unsupported)).isFalse();
+        assertThat(client.supports(new MarketDataRequest(
+                "BTC/USD", "Crypto", "EUR", MarketCode.CRYPTO
+        ))).isFalse();
+        assertThat(client.supports(new MarketDataRequest(
+                "BTC/USD", "Crypto", "USD", MarketCode.IEX
+        ))).isFalse();
+    }
+
     private org.springframework.test.web.client.ResponseActions expectBaseRequest() {
         return expectBaseRequest(END);
     }
@@ -256,5 +368,9 @@ class AlpacaHistoricalDataClientTest {
 
     private MarketDataRequest instrument() {
         return new MarketDataRequest(" aapl ", "Equity", "USD", MarketCode.IEX);
+    }
+
+    private MarketDataRequest crypto() {
+        return new MarketDataRequest(" btc/usd ", "Crypto", "USD", MarketCode.CRYPTO);
     }
 }
