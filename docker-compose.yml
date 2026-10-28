@@ -43,37 +43,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # ETL Pipeline
-  etl-pipeline:
-    build: .
-    container_name: trading-etl
-    environment:
-      OLTP_DB_HOST: trading-db
-      OLTP_DB_PORT: 5432
-      OLTP_DB_NAME: trading_db
-      OLTP_DB_USER: trading_user
-      OLTP_DB_PASSWORD: trading_password
-      WH_DB_HOST: warehouse-db
-      WH_DB_PORT: 5432
-      WH_DB_NAME: trading_dw
-      WH_DB_USER: trading_dw
-      WH_DB_PASSWORD: trading_dw_password
-      ETL_INTERVAL_SECONDS: 60
-      ETL_MAX_RETRIES: 3
-      ETL_RETRY_DELAY_SECONDS: 5
-      ETL_LOG_LEVEL: INFO
-      ETL_BATCH_SIZE: 1000
-    depends_on:
-      trading-db:
-        condition: service_healthy
-      warehouse-db:
-        condition: service_healthy
-    volumes:
-      - ./logs:/app/logs
-    networks:
-      - trading-network
-    restart: unless-stopped
-
 networks:
   trading-network:
     driver: bridge
