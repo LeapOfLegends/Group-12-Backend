@@ -51,3 +51,4 @@ networks:
 volumes:
   trading_db_data:
   warehouse_db_data:
+
